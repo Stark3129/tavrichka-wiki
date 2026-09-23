@@ -1,3 +1,5 @@
+'use client';
+
 import { motion } from 'framer-motion';
 import { Calendar, Laugh, Lightbulb, Megaphone, Newspaper } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';

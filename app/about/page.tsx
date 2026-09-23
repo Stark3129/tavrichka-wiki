@@ -58,28 +58,10 @@ export default function AboutPage() {
 
       <div className="card p-6">
         <h2 className="text-lg font-bold text-[var(--text)]">Контакты</h2>
-        <ul className="mt-3 space-y-2 text-sm">
-          <li>
-            Почта:{' '}
-            <a
-              href="mailto:ivanminigame@gmail.com"
-              className="font-medium text-[var(--accent)] hover:underline"
-            >
-              ivanminigame@gmail.com
-            </a>
-          </li>
-          <li>
-            GitHub:{' '}
-            <a
-              href="https://github.com/Stark3129/tavrichka-wiki"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-[var(--accent)] hover:underline"
-            >
-              github.com/Stark3129/tavrichka-wiki
-            </a>
-          </li>
-        </ul>
+        <p className="mt-3 text-sm text-[var(--text-muted)]">
+          Проект разработан и поддерживается студентами Таврического колледжа.
+          По всем вопросам обращайтесь к администрации колледжа.
+        </p>
         <Link
           href="/"
           className="btn btn-outline mt-5"
