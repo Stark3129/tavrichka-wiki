@@ -23,9 +23,11 @@ const NAV = [
 export default function Header({
   user,
   isAdmin,
+  userRole,
 }: {
   user: User | null;
   isAdmin: boolean;
+  userRole?: string;
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -96,6 +98,16 @@ export default function Header({
               <span className="hidden max-w-[150px] truncate text-sm text-white/90 md:block">
                 {user.email}
               </span>
+              {userRole === 'admin' && (
+                <span className="hidden rounded bg-purple-500/30 px-1.5 py-0.5 text-xs text-purple-100 md:inline-block">
+                  Админ
+                </span>
+              )}
+              {userRole === 'moderator' && (
+                <span className="hidden rounded bg-blue-500/30 px-1.5 py-0.5 text-xs text-blue-100 md:inline-block">
+                  Модер
+                </span>
+              )}
               <form action={logout}>
                 <button
                   type="submit"

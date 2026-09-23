@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import RequireRole from '@/components/RequireRole';
 import { createClient } from '@/lib/supabase/client';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import type { MapFloor, MapObject } from '@/lib/types';
@@ -32,6 +33,14 @@ const EMPTY_FLOOR = {
 };
 
 export default function AdminMapPage() {
+  return (
+    <RequireRole allowed={['admin']}>
+      <AdminMapPageInner />
+    </RequireRole>
+  );
+}
+
+function AdminMapPageInner() {
   const [objects, setObjects] = useState<MapObject[]>([]);
   const [floors, setFloors] = useState<MapFloor[]>([]);
   const [loading, setLoading] = useState(true);

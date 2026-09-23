@@ -21,12 +21,26 @@ const SECTIONS = [
   { href: '/admin/suggestions', label: 'Предложения', emoji: '💡', desc: 'Предложки на модерации' },
   { href: '/admin/map', label: 'Карта', emoji: '🗺️', desc: 'Корпуса, этажи и кабинеты' },
   { href: '/admin/replacements', label: 'Замены вручную', emoji: '🔄', desc: 'Добавление и правка замен по датам' },
-  { href: '/admin/users', label: 'Пользователи', emoji: '👥', desc: 'Управление ролями и доступом' },
 ];
+
+const USERS_SECTION = { href: '/admin/users', label: 'Пользователи', emoji: '👥', desc: 'Управление ролями и доступом' };
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
   const today = todayIso();
+
+  // Роль текущего пользователя: карточку «Пользователи» видим только админу.
+  const { data: userData } = await supabase.auth.getUser();
+  let role = '';
+  if (userData.user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userData.user.id)
+      .single();
+    role = profile?.role ?? '';
+  }
+  const isAdminUser = role === 'admin';
 
   const [postsRes, replacementsRes, teachersRes, editsRes, profilesRes] = await Promise.all([
     supabase.from('posts').select('*', { count: 'exact', head: true }),
@@ -68,12 +82,16 @@ export default async function AdminDashboardPage() {
       count: editsRes.count,
       accent: true,
     },
-    {
-      label: 'Пользователи',
-      emoji: '👥',
-      href: '/admin/users',
-      count: profilesRes.count,
-    },
+    ...(isAdminUser
+      ? [
+          {
+            label: 'Пользователи',
+            emoji: '👥',
+            href: '/admin/users',
+            count: profilesRes.count,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -123,7 +141,7 @@ export default async function AdminDashboardPage() {
       {/* Разделы админки */}
       <h2 className="mb-3 text-lg font-bold text-[var(--text)]">Разделы админки</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {SECTIONS.map((s) => (
+        {(isAdminUser ? [...SECTIONS, USERS_SECTION] : SECTIONS).map((s) => (
           <Link
             key={s.href}
             href={s.href}

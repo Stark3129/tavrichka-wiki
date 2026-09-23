@@ -102,6 +102,10 @@ create policy "Модератор/админ может удалять комм�
     exists (select 1 from public.profiles where id = auth.uid() and role in ('admin', 'moderator'))
   );
 
+drop policy if exists "Автор может удалить свой комментарий" on public.comments;
+create policy "Автор может удалить свой комментарий" on public.comments
+  for delete using (auth.uid() = author_id);
+
 drop trigger if exists comments_updated_at on public.comments;
 create trigger comments_updated_at
   before update on public.comments

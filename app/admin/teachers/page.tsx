@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import RequireRole from '@/components/RequireRole';
 import { formatDate } from '@/lib/utils';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import type { Teacher, TeacherEdit } from '@/lib/types';
@@ -32,6 +33,14 @@ const EMPTY_FORM = {
 };
 
 export default function AdminTeachersPage() {
+  return (
+    <RequireRole allowed={['admin', 'moderator']}>
+      <AdminTeachersPageInner />
+    </RequireRole>
+  );
+}
+
+function AdminTeachersPageInner() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [edits, setEdits] = useState<TeacherEdit[]>([]);
   const [loading, setLoading] = useState(true);

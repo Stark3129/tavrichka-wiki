@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import RequireRole from '@/components/RequireRole';
 import { createClient } from '@/lib/supabase/client';
 import type { Replacement } from '@/lib/types';
 
@@ -37,6 +38,14 @@ function formatDate(iso: string): string {
 }
 
 export default function AdminReplacementsPage() {
+  return (
+    <RequireRole allowed={['admin']}>
+      <AdminReplacementsPageInner />
+    </RequireRole>
+  );
+}
+
+function AdminReplacementsPageInner() {
   const [date, setDate] = useState(todayIso());
   const [rows, setRows] = useState<Replacement[]>([]);
   const [loading, setLoading] = useState(false);

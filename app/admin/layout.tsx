@@ -5,14 +5,14 @@ import { createClient } from '@/lib/supabase/server';
 export const metadata = { title: 'Админ-зона' };
 
 const NAV = [
-  { href: '/admin', label: 'Дашборд' },
-  { href: '/admin/import', label: 'Импорт' },
-  { href: '/admin/posts', label: 'Посты' },
-  { href: '/admin/teachers', label: 'Преподаватели' },
-  { href: '/admin/map', label: 'Карта' },
-  { href: '/admin/suggestions', label: 'Предложки' },
-  { href: '/admin/replacements', label: 'Замены вручную' },
-  { href: '/admin/users', label: 'Пользователи' },
+  { href: '/admin', label: 'Дашборд', roles: ['admin', 'moderator'] },
+  { href: '/admin/import', label: 'Импорт', roles: ['admin'] },
+  { href: '/admin/posts', label: 'Посты', roles: ['admin', 'moderator'] },
+  { href: '/admin/teachers', label: 'Преподаватели', roles: ['admin', 'moderator'] },
+  { href: '/admin/map', label: 'Карта', roles: ['admin'] },
+  { href: '/admin/suggestions', label: 'Предложки', roles: ['admin', 'moderator'] },
+  { href: '/admin/replacements', label: 'Замены вручную', roles: ['admin'] },
+  { href: '/admin/users', label: 'Пользователи', roles: ['admin'] },
 ];
 
 export default async function AdminLayout({
@@ -30,7 +30,10 @@ export default async function AdminLayout({
     .eq('id', data.user.id)
     .single();
 
-  if (profile?.role !== 'admin') redirect('/');
+  // В админку пускаем админов и модераторов; тонкое разграничение по
+  // разделам делают RequireRole на страницах и фильтр навигации ниже.
+  const role = profile?.role ?? '';
+  if (!['admin', 'moderator'].includes(role)) redirect('/');
 
   // Счётчик предложек на модерации для бейджа в навигации.
   const { count: pendingSuggestions } = await supabase
@@ -41,7 +44,7 @@ export default async function AdminLayout({
   return (
     <div className="space-y-4">
       <nav className="card flex flex-wrap gap-1 p-2">
-        {NAV.map((item) => (
+        {NAV.filter((item) => item.roles.includes(role)).map((item) => (
           <Link
             key={item.href}
             href={item.href}

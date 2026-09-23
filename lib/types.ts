@@ -93,6 +93,7 @@ export interface Comment {
   author_id: string;
   text: string;
   created_at: string;
+  updated_at?: string | null;
   profiles?: { username: string | null } | null;
 }
 

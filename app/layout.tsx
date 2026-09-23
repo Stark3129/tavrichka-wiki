@@ -34,13 +34,15 @@ export default async function RootLayout({
   const user: User | null = data?.user ?? null;
 
   let isAdmin = false;
+  let userRole = '';
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single();
-    isAdmin = profile?.role === 'admin';
+    userRole = profile?.role ?? '';
+    isAdmin = userRole === 'admin';
   }
 
   return (
@@ -57,7 +59,7 @@ export default async function RootLayout({
         <div className="bg-gradient-blob blob-4" />
         <div className="bg-gradient-blob blob-5" />
         <SearchProvider>
-          <Header user={user} isAdmin={isAdmin} />
+          <Header user={user} isAdmin={isAdmin} userRole={userRole} />
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
             {children}
           </main>

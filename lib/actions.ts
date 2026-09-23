@@ -124,3 +124,50 @@ export async function createPost(
   revalidatePath('/');
   return { ok: true, message: 'Пост отправлен на модерацию' };
 }
+
+/**
+ * Редактирование комментария: автор — свой, админ/модератор — любой.
+ * Текст пропускается через фильтр мата перед сохранением.
+ */
+export async function updateComment(
+  commentId: string | number,
+  newText: string
+): Promise<{ ok: boolean; message: string }> {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  const user = data?.user;
+  if (!user) return { ok: false, message: 'Не авторизован' };
+
+  const { data: comment } = await supabase
+    .from('comments')
+    .select('author_id')
+    .eq('id', commentId)
+    .single();
+  if (!comment) return { ok: false, message: 'Комментарий не найден' };
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const isOwner = comment.author_id === user.id;
+  const isModerator = profile?.role === 'admin' || profile?.role === 'moderator';
+  if (!isOwner && !isModerator) {
+    return { ok: false, message: 'Нет прав для редактирования' };
+  }
+
+  const trimmed = (newText || '').trim();
+  if (!trimmed) return { ok: false, message: 'Текст не может быть пустым' };
+
+  const sanitized = await sanitizeText(trimmed);
+
+  const { error } = await supabase
+    .from('comments')
+    .update({ text: sanitized })
+    .eq('id', commentId);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath('/');
+  return { ok: true, message: 'Сохранено' };
+}

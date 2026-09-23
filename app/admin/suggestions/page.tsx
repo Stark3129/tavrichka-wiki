@@ -1,5 +1,6 @@
 import Breadcrumbs from '@/components/Breadcrumbs';
 import SuggestionActions from '@/components/SuggestionActions';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
 
@@ -30,6 +31,16 @@ interface Suggestion {
 
 export default async function AdminSuggestionsPage() {
   const supabase = await createClient();
+
+  // Посты и предложки модеруют админ и модератор.
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) redirect('/login');
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', data.user.id)
+    .single();
+  if (!profile || !['admin', 'moderator'].includes(profile.role)) redirect('/');
 
   const { data: pendingData } = await supabase
     .from('post_suggestions')

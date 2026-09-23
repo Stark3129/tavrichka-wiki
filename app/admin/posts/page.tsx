@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import RequireRole from '@/components/RequireRole';
 import { cn, formatDate } from '@/lib/utils';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import type { Post } from '@/lib/types';
@@ -21,6 +22,14 @@ const STATUS_LABELS: Record<Post['status'], { label: string; className: string }
 };
 
 export default function AdminPostsPage() {
+  return (
+    <RequireRole allowed={['admin', 'moderator']}>
+      <AdminPostsPageInner />
+    </RequireRole>
+  );
+}
+
+function AdminPostsPageInner() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState('');

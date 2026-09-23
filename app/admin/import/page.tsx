@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import RequireRole from '@/components/RequireRole';
 import * as XLSX from 'xlsx';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -17,6 +18,14 @@ type Mode = 'append' | 'replace';
 type ImportKind = 'date' | 'semester';
 
 export default function AdminImportPage() {
+  return (
+    <RequireRole allowed={['admin']}>
+      <AdminImportPageInner />
+    </RequireRole>
+  );
+}
+
+function AdminImportPageInner() {
   const [file, setFile] = useState<File | null>(null);
   const [date, setDate] = useState('');
   const [weekType, setWeekType] = useState<'числитель' | 'знаменатель'>('числитель');
