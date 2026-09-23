@@ -66,14 +66,26 @@ export default function AdminPostsPage() {
 
       let imageUrl = '';
       if (image) {
+        if (image.size > 5 * 1024 * 1024) {
+          setCreateError('Файл слишком большой (максимум 5MB).');
+          setPublishing(false);
+          return;
+        }
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(image.type)) {
+          setCreateError('Поддерживаются только JPG, PNG и WebP.');
+          setPublishing(false);
+          return;
+        }
         const ext = image.name.includes('.') ? image.name.split('.').pop() : 'jpg';
-        const path = `posts/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
         const { error: upErr } = await supabase.storage
-          .from('uploads')
+          .from('post-images')
           .upload(path, image, { cacheControl: '3600', upsert: false });
         if (upErr) throw new Error('Не удалось загрузить картинку в хранилище.');
 
-        const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(path);
+        const { data: urlData } = supabase.storage
+          .from('post-images')
+          .getPublicUrl(path);
         imageUrl = urlData.publicUrl;
       }
 
@@ -115,6 +127,13 @@ export default function AdminPostsPage() {
   async function remove(post: Post) {
     if (!window.confirm(`Удалить пост «${post.title}»? Действие необратимо.`)) return;
     const supabase = createClient();
+    // Сначала удаляем фото из Storage, потом сам пост.
+    if (post.image_url) {
+      const filePath = post.image_url.split('/post-images/')[1];
+      if (filePath) {
+        await supabase.storage.from('post-images').remove([filePath]);
+      }
+    }
     const { error } = await supabase.from('posts').delete().eq('id', post.id);
     if (!error) setPosts((prev) => prev.filter((p) => p.id !== post.id));
   }
@@ -227,6 +246,17 @@ export default function AdminPostsPage() {
                 <p className="mt-0.5 line-clamp-2 whitespace-pre-line text-sm text-[var(--text-muted)]">
                   {p.content}
                 </p>
+                {p.image_url && (
+                  <div className="mt-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.image_url}
+                      alt={p.title || 'Фото'}
+                      className="max-h-48 rounded-xl object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
                 <div className="mt-2 flex flex-wrap gap-2">
                   {p.status !== 'published' && (
                     <button

@@ -79,27 +79,41 @@ export default async function TeacherPage({
   const surname = teacher.full_name.trim().split(/\s+/)[0] ?? '';
   let todayRows: ScheduleRow[] = [];
   if (surname) {
+    // Фактическое расписание на дату (замены/импорт пишут датированные строки).
+    // Лимит 20 — запас: пар в день максимум 6-7, но из-за дублей групп бывает больше.
     const { data } = await supabase
       .from('schedule_rows')
       .select('*')
       .eq('date', selectedDate)
       .ilike('teacher', `%${surname}%`)
       .order('lesson', { ascending: true })
-      .limit(100);
-    todayRows = (data as ScheduleRow[] | null) ?? [];
+      .limit(20);
+    const datedRows = (data as ScheduleRow[] | null) ?? [];
 
-    // Занятий с точной датой нет — берём недельный шаблон (date is null)
-    // на день недели выбранной даты.
-    if (todayRows.length === 0) {
-      const { data: tpl } = await supabase
-        .from('schedule_rows')
-        .select('*')
-        .is('date', null)
-        .ilike('teacher', `%${surname}%`)
-        .ilike('day_week', weekdayRu(selectedDate))
-        .order('lesson', { ascending: true })
-        .limit(100);
-      todayRows = (tpl as ScheduleRow[] | null) ?? [];
+    // Недельный шаблон (date is null) на день недели выбранной даты.
+    const { data: tplData } = await supabase
+      .from('schedule_rows')
+      .select('*')
+      .is('date', null)
+      .ilike('teacher', `%${surname}%`)
+      .ilike('day_week', weekdayRu(selectedDate))
+      .order('lesson', { ascending: true })
+      .limit(20);
+    const tplRows = (tplData as ScheduleRow[] | null) ?? [];
+
+    if (datedRows.length === 0) {
+      // Датированных строк нет — показываем весь шаблон дня.
+      todayRows = tplRows;
+    } else {
+      // Датированные строки есть, но они могут покрывать не все пары:
+      // дополняем их шаблонными парами, которых среди них нет
+      // (та же семантика, что в MapExplorer: датированная строка
+      // перекрывает шаблонную пару той же группы+пары).
+      const covered = new Set(
+        datedRows.map((r) => `${r.lesson}|${r.group_name ?? ''}`)
+      );
+      todayRows = [...datedRows, ...tplRows.filter((r) => !covered.has(`${r.lesson}|${r.group_name ?? ''}`))]
+        .sort((a, b) => Number(a.lesson) - Number(b.lesson));
     }
   }
 

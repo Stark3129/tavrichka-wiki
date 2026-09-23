@@ -22,6 +22,9 @@ export default function SuggestionForm() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [authorName, setAuthorName] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
@@ -43,13 +46,47 @@ export default function SuggestionForm() {
     // с фильтрацией мата в server action createPost.
     const { data: userData } = await supabase.auth.getUser();
     if (userData?.user) {
-      const result = await createPost({ title: title.trim(), content: content.trim(), type });
+      // Загрузка фото в Storage (если выбрано).
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        setUploading(true);
+        const fileExt = imageFile.name.includes('.')
+          ? imageFile.name.split('.').pop()
+          : 'jpg';
+        const fileName = `${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('post-images')
+          .upload(fileName, imageFile, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) {
+          setError('Ошибка загрузки фото: ' + uploadError.message);
+          setUploading(false);
+          setBusy(false);
+          return;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('post-images')
+          .getPublicUrl(fileName);
+        imageUrl = urlData.publicUrl;
+        setUploading(false);
+      }
+
+      const result = await createPost({
+        title: title.trim(),
+        content: content.trim(),
+        type,
+        image_url: imageUrl,
+      });
       setBusy(false);
       if (result.ok) {
         setSent(true);
         setTitle('');
         setContent('');
         setAuthorName('');
+        setImageFile(null);
+        setImagePreview('');
       } else {
         setError(result.message);
       }
@@ -140,6 +177,42 @@ export default function SuggestionForm() {
           />
         </div>
 
+        <div>
+          <label className="label">Фото (необязательно)</label>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                if (file.size > 5 * 1024 * 1024) {
+                  alert('Файл слишком большой (максимум 5MB)');
+                  return;
+                }
+                setImageFile(file);
+                setImagePreview(URL.createObjectURL(file));
+              }
+            }}
+            className="w-full rounded-xl border border-[var(--border)] px-4 py-2 bg-[var(--bg)] text-[var(--text)] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-cyan-500 file:text-white hover:file:bg-cyan-600"
+          />
+          {imagePreview && (
+            <div className="mt-2 relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imagePreview} alt="Превью" className="max-h-48 rounded-lg" />
+              <button
+                type="button"
+                onClick={() => {
+                  setImageFile(null);
+                  setImagePreview('');
+                }}
+                className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+              >
+                ×
+              </button>
+            </div>
+          )}
+        </div>
+
         {error && <p className="text-sm text-rose-600">{error}</p>}
         {sent && (
           <p className="text-sm font-medium text-emerald-600">
@@ -147,8 +220,12 @@ export default function SuggestionForm() {
           </p>
         )}
 
-        <button type="submit" disabled={busy} className="btn btn-primary">
-          {busy ? 'Отправляем…' : 'Отправить'}
+        <button
+          type="submit"
+          disabled={busy || uploading}
+          className="btn btn-primary"
+        >
+          {uploading ? 'Загрузка...' : busy ? 'Отправляем…' : 'Отправить'}
         </button>
       </div>
     </form>

@@ -41,6 +41,7 @@ export interface CreatePostInput {
   title: string;
   content: string;
   type: string;
+  image_url?: string | null;
 }
 
 const ALLOWED_ROLES = ['user', 'student', 'moderator', 'admin', 'banned'] as const;
@@ -111,6 +112,7 @@ export async function createPost(
     title: sanitizedTitle,
     content: sanitizedContent,
     type: input.type,
+    image_url: input.image_url ?? null,
     author_id: user.id,
     status: 'pending',
   });
