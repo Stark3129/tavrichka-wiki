@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
+import { mergeScheduleRows } from '@/lib/schedule-merge';
 import ShareSchedule from '@/components/ShareSchedule';
 import type { ScheduleRow } from '@/lib/types';
 
@@ -61,32 +62,31 @@ export default async function SchedulePage({
   const groups = Array.from(groupSet).sort((a, b) => a.localeCompare(b, 'ru'));
 
   let rows: ScheduleRow[] = [];
-  let source: 'replacements' | 'template' = 'replacements';
+  let source: 'replacements' | 'template' = 'template';
   if (group) {
-    // Сначала — фактическое расписание (замены) на выбранную дату.
-    const { data } = await supabase
-      .from('schedule_rows')
-      .select('*')
-      .eq('group_name', group)
-      .eq('date', selectedDate)
-      .order('lesson', { ascending: true });
-    rows = (data as ScheduleRow[] | null) ?? [];
-
-    // Замен на эту дату нет — показываем недельный шаблон (date is null).
-    if (rows.length === 0) {
-      const weekday = weekdayRu(selectedDate);
-      const { data: tpl } = await supabase
+    const weekday = weekdayRu(selectedDate);
+    // Шаблон недели и замены на дату — параллельно, затем слияние:
+    // замена перекрывает шаблонную пару с тем же номером пары и группой,
+    // пары без замен остаются из шаблона.
+    const [tplRes, datedRes] = await Promise.all([
+      supabase
         .from('schedule_rows')
         .select('*')
         .is('date', null)
         .eq('group_name', group)
         .ilike('day_week', weekday)
-        .order('lesson', { ascending: true });
-      if (tpl && tpl.length > 0) {
-        rows = tpl as ScheduleRow[];
-        source = 'template';
-      }
-    }
+        .order('lesson', { ascending: true }),
+      supabase
+        .from('schedule_rows')
+        .select('*')
+        .eq('group_name', group)
+        .eq('date', selectedDate)
+        .order('lesson', { ascending: true }),
+    ]);
+    const tpl = (tplRes.data as ScheduleRow[] | null) ?? [];
+    const dated = (datedRes.data as ScheduleRow[] | null) ?? [];
+    rows = mergeScheduleRows(tpl, dated);
+    if (dated.length > 0) source = 'replacements';
   }
 
   const dayLabel = rows[0]?.day_week || weekdayRu(selectedDate);
@@ -179,7 +179,7 @@ export default async function SchedulePage({
         <div>
           <p className="mb-2 text-sm font-medium text-[var(--text-muted)]">
             {source === 'replacements'
-              ? 'Фактическое расписание (замены)'
+              ? 'Фактическое расписание (с учётом замен)'
               : 'Базовое расписание недели'}
           </p>
         <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] shadow-lg">

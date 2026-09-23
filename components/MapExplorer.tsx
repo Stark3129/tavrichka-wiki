@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { cn, formatDate } from '@/lib/utils';
 import { weekdayRu } from '@/lib/cabinets';
 import { normalizeCabinet } from '@/lib/cabinet-mapping';
+import { mergeScheduleRows, rowKey } from '@/lib/schedule-merge';
 import type { LessonTime, MapFloor, MapObject, ScheduleRow } from '@/lib/types';
 
 /** Особые названия кнопок → фактическое значение cabinet в schedule_rows. */
@@ -228,7 +229,6 @@ export default function MapExplorer({
       }
       // Группы из шаблона: проверяем, не увезли ли их заменами в другой кабинет.
       const groups = Array.from(new Set(tpl.map((r) => r.group_name)));
-      const movedKeys = new Set<string>();
       if (groups.length > 0) {
         supabase
           .from('schedule_rows')
@@ -238,30 +238,25 @@ export default function MapExplorer({
           .limit(500)
           .then(({ data: moved }) => {
             if (stale) return;
-            const norm = (c: string) => (c ?? '').trim().toLowerCase();
-            ((moved as Array<Pick<ScheduleRow, 'lesson' | 'group_name' | 'cabinet'>> | null) ?? []).forEach(
-              (r) => {
-                if (norm(r.cabinet) !== norm(activeCabinet)) {
-                  movedKeys.add(`${r.lesson}|${r.group_name}`);
-                }
+            const movedKeys = new Set<string>();
+            const normCab = (c: string | null | undefined) =>
+              (c ?? '').trim().toLowerCase();
+            (
+              (moved as Array<
+                Pick<ScheduleRow, 'lesson' | 'group_name' | 'cabinet'>
+              > | null) ?? []
+            ).forEach((r) => {
+              if (normCab(r.cabinet) !== normCab(activeCabinet)) {
+                movedKeys.add(rowKey(r.lesson, r.group_name));
               }
-            );
-            const exactKeys = new Set(
-              exact.map((r) => `${r.lesson}|${r.group_name}`)
-            );
-            const merged = [
-              ...exact,
-              ...tpl.filter(
-                (r) =>
-                  !exactKeys.has(`${r.lesson}|${r.group_name}`) &&
-                  !movedKeys.has(`${r.lesson}|${r.group_name}`)
-              ),
-            ].sort((a, b) => a.lesson - b.lesson);
-            setTodayRows(merged);
+            });
+            // Замены перекрывают шаблонные пары (нормализованный ключ
+            // пара+группа); пары, увезённые в другой кабинет, убираются.
+            setTodayRows(mergeScheduleRows(tpl, exact, movedKeys));
             setRowsState('done');
           });
       } else {
-        setTodayRows(exact);
+        setTodayRows(mergeScheduleRows([], exact));
         setRowsState('done');
       }
     });

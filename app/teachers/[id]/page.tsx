@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import EditSuggestionForm from '@/components/EditSuggestionForm';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { formatDate } from '@/lib/utils';
+import { mergeScheduleRows } from '@/lib/schedule-merge';
 import type { ScheduleRow, Teacher } from '@/lib/types';
 
 /** Текущая дата по московскому времени в формате ГГГГ-ММ-ДД. */
@@ -105,15 +106,10 @@ export default async function TeacherPage({
       // Датированных строк нет — показываем весь шаблон дня.
       todayRows = tplRows;
     } else {
-      // Датированные строки есть, но они могут покрывать не все пары:
-      // дополняем их шаблонными парами, которых среди них нет
-      // (та же семантика, что в MapExplorer: датированная строка
-      // перекрывает шаблонную пару той же группы+пары).
-      const covered = new Set(
-        datedRows.map((r) => `${r.lesson}|${r.group_name ?? ''}`)
-      );
-      todayRows = [...datedRows, ...tplRows.filter((r) => !covered.has(`${r.lesson}|${r.group_name ?? ''}`))]
-        .sort((a, b) => Number(a.lesson) - Number(b.lesson));
+      // Датированные строки есть — слияние: замена перекрывает шаблонную пару
+      // с тем же номером пары и группой (нормализованным), остальные шаблонные
+      // пары дня остаются.
+      todayRows = mergeScheduleRows(tplRows, datedRows);
     }
   }
 
