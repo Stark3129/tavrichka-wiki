@@ -21,7 +21,6 @@ interface Acc {
   subject: string;
   teachers: string;
   cabinets: string;
-  conflict: boolean;
 }
 
 interface GroupCol {
@@ -105,6 +104,14 @@ export function parseScheduleMatrix(rows: unknown[][]): ParseResult {
 
   const usable = groups.filter((g) => g.name && g.cabinetCol !== -1);
 
+  // Самопроверка маппинга: аудитория должна браться строго из колонки,
+  // следующей за колонкой предмета той же группы.
+  for (const g of usable) {
+    if (g.cabinetCol !== g.subjectCol + 1) {
+      errors.push(`Нарушена пара колонок «группа | Ауд.» у группы «${g.name}».`);
+    }
+  }
+
   // 3. Строки данных.
   const acc = new Map<string, Acc>();
   let lastDay = '';
@@ -143,16 +150,8 @@ export function parseScheduleMatrix(rows: unknown[][]): ParseResult {
       const cabLines = cellLines(row[g.cabinetCol]);
       if (subjLines.length === 0 && cabLines.length === 0) continue;
 
-      if (subjLines.length === 0) {
-        errors.push(
-          `Пустой предмет при непустой аудитории: группа «${g.name}» (строка ${i + 1}).`
-        );
-        continue;
-      }
-
-      const subject = subjLines[0];
-      const teachers = subjLines.slice(1); // первая строка — предмет, остальные — преподаватели
-      const teachersStr = teachers.join('\n');
+      const subject = subjLines[0] ?? '';
+      const teachersStr = subjLines.slice(1).join('\n'); // первая строка — предмет, остальные — преподаватели
       const cabinetsStr = cabLines.join('\n');
 
       const key = `${day}|${lesson}|${g.name}`;
@@ -162,42 +161,49 @@ export function parseScheduleMatrix(rows: unknown[][]): ParseResult {
           subject,
           teachers: teachersStr,
           cabinets: cabinetsStr,
-          conflict: false,
         });
         continue;
       }
 
-      // Дубли из объединённых ячеек: первое непустое значение; расхождение → conflict.
-      if (subject && prev.subject && subject !== prev.subject) {
-        conflicts.push(`${day}, пара ${lesson}, группа ${g.name}: ${prev.subject} | ${subject}`);
-        prev.conflict = true;
-      } else if (subject && !prev.subject) {
+      // Две физические строки одной пары (день + номер пары):
+      // 1) значение только в одной строке — дополняющие данные, берём его;
+      // 2) идентичные значения в обеих строках — обычный дубль, берём одно;
+      // 3) разные значения — реальный конфликт недель/вариантов: в items
+      //    остаётся ПЕРВОЕ значение, второе фиксируется только в conflicts
+      //    (строку НЕ пропускаем).
+      if (subject && !prev.subject) {
         prev.subject = subject;
+      } else if (subject && prev.subject && subject !== prev.subject) {
+        conflicts.push(
+          `${day}, пара ${lesson}, группа ${g.name}: предмет «${prev.subject}» | «${subject}» (в расписании оставлен первый)`
+        );
       }
 
-      if (teachersStr && prev.teachers && teachersStr !== prev.teachers) {
-        conflicts.push(
-          `${day}, пара ${lesson}, группа ${g.name}: ${prev.teachers.replace(/\n/g, ' / ')} | ${teachersStr.replace(/\n/g, ' / ')}`
-        );
-        prev.conflict = true;
-      } else if (teachersStr && !prev.teachers) {
+      if (teachersStr && !prev.teachers) {
         prev.teachers = teachersStr;
+      } else if (teachersStr && prev.teachers && teachersStr !== prev.teachers) {
+        conflicts.push(
+          `${day}, пара ${lesson}, группа ${g.name}: преподаватели ${prev.teachers.replace(/\n/g, ' / ')} | ${teachersStr.replace(/\n/g, ' / ')}`
+        );
       }
 
-      if (cabinetsStr && prev.cabinets && cabinetsStr !== prev.cabinets) {
-        conflicts.push(
-          `${day}, пара ${lesson}, группа ${g.name}: ${prev.cabinets.replace(/\n/g, ' / ')} | ${cabinetsStr.replace(/\n/g, ' / ')}`
-        );
-        prev.conflict = true;
-      } else if (cabinetsStr && !prev.cabinets) {
+      if (cabinetsStr && !prev.cabinets) {
         prev.cabinets = cabinetsStr;
+      } else if (cabinetsStr && prev.cabinets && cabinetsStr !== prev.cabinets) {
+        conflicts.push(
+          `${day}, пара ${lesson}, группа ${g.name}: ауд. ${prev.cabinets.replace(/\n/g, ' / ')} | ${cabinetsStr.replace(/\n/g, ' / ')}`
+        );
       }
     }
   }
 
   // 4. Разворачиваем накопленное в строки «одна строка на пару (преподаватель, кабинет)».
   for (const [key, a] of acc) {
-    if (a.conflict) continue;
+    if (!a.subject) {
+      const [day, lessonStr, groupName] = key.split('|');
+      errors.push(`Не определён предмет: ${day}, пара ${lessonStr}, группа ${groupName}.`);
+      continue;
+    }
     const [day, lessonStr, groupName] = key.split('|');
     const lesson = Number(lessonStr);
     const teachers = a.teachers ? a.teachers.split('\n') : [];
@@ -240,9 +246,11 @@ export interface SemesterSheet {
 /**
  * Разбор книги семестрового расписания: каждый лист — недельный шаблон.
  * К каждому листу применяются те же правила матрицы (parseScheduleMatrix):
- * заголовок по «Дни недели»/«пара», пары колонок группа + «Ауд.»,
- * дубли из объединённых ячеек (первое непустое значение), расхождения → conflicts.
- * Служебные строки («Утверждаю», «Согласовано», пустой день недели) пропускаются
+ * заголовок по «Дни недели»/«пара», пары колонок группа + «Ауд.».
+ * Две физические строки одной пары объединяются: пустые поля дополняются,
+ * идентичные значения дедуплицируются, реальные расхождения → conflicts
+ * (с сохранением первого значения в items). Служебные строки
+ * («Утверждаю», «Согласовано», пустой день недели) пропускаются
  * внутри parseScheduleMatrix. Ошибки и конфликты помечаются именем листа;
  * листы без распознанной матрицы пропускаются молча.
  */
