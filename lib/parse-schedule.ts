@@ -280,35 +280,49 @@ export interface ExtractedTeacher {
 const TEACHER_NOISE = /^(\d\s*подгруппа|\(обе подгруппы\))$/i;
 
 /**
+ * Строгая нормализация ФИО преподавателя: схлопывание повторных точек,
+ * пробелы вокруг точек между инициалами, дописывание точки в конце
+ * («Нелина Н.И» → «Нелина Н.И.») и схлопывание пробелов.
+ */
+function normalizeTeacherName(raw: string): string {
+  let name = raw.trim();
+  name = name.replace(/\.{2,}/g, '.'); // «Кучер Л.С..» → «Кучер Л.С.»
+  name = name.replace(/\s+\./g, '.'); // пробел перед точкой
+  name = name.replace(/\.\s+(?=[А-ЯЁA-Z]\.)/g, '.'); // «Л. Н.» → «Л.Н.»
+  if (/[А-ЯЁA-Z]$/.test(name) && name.includes('.')) name += '.'; // «Н.И» → «Н.И.»
+  return name.replace(/\s+/g, ' ').trim();
+}
+
+/** Фамилия + одна-две инициальные буквы с точками: «Бобкова Л.Н.». */
+const TEACHER_NAME_RE = /^[А-ЯЁ][а-яё]+\s+[А-ЯЁ]\.(\s?[А-ЯЁ]\.?)?$/;
+
+/**
  * Извлекает уникальных преподавателей из распознанных строк расписания.
  * Поле teacher разбивается по переносам строк на отдельные имена;
- * служебные пометки («1 подгруппа», «2 подгруппа», «(обе подгруппы)»)
- * и пустые строки отбрасываются; имя нормализуется (trim, схлопывание
- * двойных пробелов); имена короче 5 символов или без пробела пропускаются.
+ * пустые строки, служебные пометки и строки, не подходящие под формат
+ * «Фамилия И.И.» / «Фамилия И.И» (после нормализации), отбрасываются.
+ * Дедупликация — по нормализованному имени в нижнем регистре.
  */
 export function extractTeachers(items: ParsedLesson[]): ExtractedTeacher[] {
-  const map = new Map<string, Set<string>>();
+  const map = new Map<string, ExtractedTeacher>();
 
   for (const it of items) {
     for (const raw of it.teacher.split(/\r?\n/)) {
-      const name = raw.replace(/\s+/g, ' ').trim();
-      if (!name) continue;
-      if (TEACHER_NOISE.test(name)) continue;
-      if (name.length < 5 || !name.includes(' ')) continue;
+      if (!raw.trim()) continue;
+      if (TEACHER_NOISE.test(raw.trim())) continue;
 
-      let subjects = map.get(name);
-      if (!subjects) {
-        subjects = new Set();
-        map.set(name, subjects);
+      const name = normalizeTeacherName(raw);
+      if (!TEACHER_NAME_RE.test(name)) continue;
+
+      const key = name.toLowerCase();
+      let entry = map.get(key);
+      if (!entry) {
+        entry = { full_name: name, subjects: [] };
+        map.set(key, entry);
       }
-      if (it.subject) subjects.add(it.subject);
+      if (it.subject && !entry.subjects.includes(it.subject)) entry.subjects.push(it.subject);
     }
   }
 
-  return Array.from(map.entries())
-    .map(([full_name, subjects]) => ({
-      full_name,
-      subjects: Array.from(subjects),
-    }))
-    .sort((a, b) => a.full_name.localeCompare(b.full_name, 'ru'));
+  return Array.from(map.values()).sort((a, b) => a.full_name.localeCompare(b.full_name, 'ru'));
 }
