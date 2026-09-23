@@ -3,16 +3,23 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { createClient } from '@/lib/supabase/client';
-import { parseScheduleMatrix, type ParsedLesson } from '@/lib/parse-schedule';
+import {
+  parseScheduleMatrix,
+  parseSemesterWorkbook,
+  type ParsedLesson,
+  type ParseResult,
+} from '@/lib/parse-schedule';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
 type Mode = 'append' | 'replace';
+type ImportKind = 'date' | 'semester';
 
 export default function AdminImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [date, setDate] = useState('');
   const [weekType, setWeekType] = useState<'числитель' | 'знаменатель'>('числитель');
   const [mode, setMode] = useState<Mode>('append');
+  const [importKind, setImportKind] = useState<ImportKind>('date');
 
   const [items, setItems] = useState<ParsedLesson[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -42,13 +49,30 @@ export default function AdminImportPage() {
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, {
-        header: 1,
-        defval: '',
-        blankrows: true,
-      });
-      const result = parseScheduleMatrix(rows);
+
+      let result: ParseResult;
+      if (importKind === 'semester') {
+        // Семестр: читаем ВСЕ листы книги — каждый лист это день/шаблон.
+        const sheets = wb.SheetNames.map((name) => ({
+          name,
+          rows: XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[name], {
+            header: 1,
+            defval: '',
+            blankrows: true,
+          }),
+        }));
+        result = parseSemesterWorkbook(sheets);
+      } else {
+        // Замены на дату: только первый лист.
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        result = parseScheduleMatrix(
+          XLSX.utils.sheet_to_json<unknown[]>(ws, {
+            header: 1,
+            defval: '',
+            blankrows: true,
+          })
+        );
+      }
       setItems(result.items);
       setErrors(result.errors);
       setConflicts(result.conflicts);
@@ -67,7 +91,7 @@ export default function AdminImportPage() {
     setErrorMsg('');
     setOkMsg('');
 
-    if (!date) {
+    if (importKind === 'date' && !date) {
       setErrorMsg('Укажите дату расписания.');
       return;
     }
@@ -83,43 +107,102 @@ export default function AdminImportPage() {
     const userId = userData.user?.id ?? '';
 
     try {
-      // Режим «заменить»: сначала удаляем существующие строки за дату + тип недели.
-      if (mode === 'replace') {
+      if (importKind === 'semester') {
+        // Семестр: недельный шаблон (date = null) — заменяем целиком.
         const { error: delErr } = await supabase
           .from('schedule_rows')
           .delete()
-          .eq('date', date)
-          .eq('week_type', weekType);
-        if (delErr) throw new Error('Не удалось удалить старые строки расписания.');
+          .is('date', null);
+        if (delErr) throw new Error('Не удалось удалить старый недельный шаблон.');
+
+        const payload = items.map((it) => ({
+          date: null,
+          week_type: weekType,
+          day_week: it.day_week,
+          lesson: it.lesson,
+          group_name: it.group_name,
+          subject: it.subject,
+          teacher: it.teacher || null,
+          cabinet: it.cabinet || null,
+        }));
+
+        const { error: insErr } = await supabase
+          .from('schedule_rows')
+          .insert(payload);
+        if (insErr) throw new Error('Не удалось записать недельный шаблон.');
+
+        const { error: logErr } = await supabase.from('replacement_files').insert({
+          file_name: fileName,
+          rows_ok: items.length,
+          rows_err: errors.length,
+          uploaded_by: userId,
+        });
+        if (logErr) throw new Error('Шаблон записан, но журнал импорта не сохранился.');
+
+        setOkMsg(
+          `Опубликовано строк шаблона: ${items.length} (${weekType}). Ошибок разбора: ${errors.length}.`
+        );
+      } else {
+        // Режим «заменить»: сначала удаляем существующие строки за дату + тип недели.
+        if (mode === 'replace') {
+          const { error: delErr } = await supabase
+            .from('schedule_rows')
+            .delete()
+            .eq('date', date)
+            .eq('week_type', weekType);
+          if (delErr) throw new Error('Не удалось удалить старые строки расписания.');
+        }
+
+        const payload = items.map((it) => ({
+          date,
+          week_type: weekType,
+          day_week: it.day_week,
+          lesson: it.lesson,
+          group_name: it.group_name,
+          subject: it.subject,
+          teacher: it.teacher || null,
+          cabinet: it.cabinet || null,
+        }));
+
+        const { error: insErr } = await supabase
+          .from('schedule_rows')
+          .insert(payload);
+        if (insErr) throw new Error('Не удалось записать строки расписания.');
+
+        // Живые замены: пересобираем replacements за выбранную дату.
+        const { error: repDelErr } = await supabase
+          .from('replacements')
+          .delete()
+          .eq('r_date', date);
+        if (repDelErr) throw new Error('Не удалось обновить замены за дату.');
+
+        const repPayload = items.map((it) => ({
+          r_date: date,
+          group_name: it.group_name,
+          lesson: it.lesson,
+          subject: it.subject,
+          teacher: it.teacher || null,
+          cabinet: it.cabinet || null,
+          change_type: 'замена',
+          note: '',
+        }));
+        const { error: repInsErr } = await supabase
+          .from('replacements')
+          .insert(repPayload);
+        if (repInsErr) throw new Error('Не удалось записать замены.');
+
+        const { error: logErr } = await supabase.from('replacement_files').insert({
+          file_name: fileName,
+          rows_ok: items.length,
+          rows_err: errors.length,
+          uploaded_by: userId,
+        });
+        if (logErr) throw new Error('Расписание записано, но журнал импорта не сохранился.');
+
+        setOkMsg(
+          `Опубликовано строк: ${items.length} (${weekType}, ${date}). Ошибок разбора: ${errors.length}.`
+        );
       }
-
-      const payload = items.map((it) => ({
-        date,
-        week_type: weekType,
-        day_week: it.day_week,
-        lesson: it.lesson,
-        group_name: it.group_name,
-        subject: it.subject,
-        teacher: it.teacher || null,
-        cabinet: it.cabinet || null,
-      }));
-
-      const { error: insErr } = await supabase
-        .from('schedule_rows')
-        .insert(payload);
-      if (insErr) throw new Error('Не удалось записать строки расписания.');
-
-      const { error: logErr } = await supabase.from('replacement_files').insert({
-        file_name: fileName,
-        rows_ok: items.length,
-        rows_err: errors.length,
-        uploaded_by: userId,
-      });
-      if (logErr) throw new Error('Расписание записано, но журнал импорта не сохранился.');
-
-      setOkMsg(
-        `Опубликовано строк: ${items.length} (${weekType}, ${date}). Ошибок разбора: ${errors.length}.`
-      );
       setItems([]);
       setErrors([]);
       setConflicts([]);
@@ -150,6 +233,40 @@ export default function AdminImportPage() {
           предпросмотр, затем публикуйте.
         </p>
 
+        <fieldset className="mt-4">
+          <legend className="label">Тип загрузки</legend>
+          <div className="mt-1 flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="imp-kind"
+                checked={importKind === 'date'}
+                onChange={() => {
+                  setImportKind('date');
+                  setItems([]);
+                  setErrors([]);
+                  setConflicts([]);
+                }}
+              />
+              Замены на дату
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="imp-kind"
+                checked={importKind === 'semester'}
+                onChange={() => {
+                  setImportKind('semester');
+                  setItems([]);
+                  setErrors([]);
+                  setConflicts([]);
+                }}
+              />
+              Семестр (недельный шаблон)
+            </label>
+          </div>
+        </fieldset>
+
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div>
             <label htmlFor="imp-file" className="label">
@@ -163,18 +280,20 @@ export default function AdminImportPage() {
               className="input file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700"
             />
           </div>
-          <div>
-            <label htmlFor="imp-date" className="label">
-              Дата расписания
-            </label>
-            <input
-              id="imp-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="input"
-            />
-          </div>
+          {importKind === 'date' && (
+            <div>
+              <label htmlFor="imp-date" className="label">
+                Дата расписания
+              </label>
+              <input
+                id="imp-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="input"
+              />
+            </div>
+          )}
           <div>
             <label htmlFor="imp-week" className="label">
               Тип недели
@@ -232,7 +351,7 @@ export default function AdminImportPage() {
           <button
             type="button"
             onClick={handlePublish}
-            disabled={publishing || items.length === 0 || !date}
+            disabled={publishing || items.length === 0 || (importKind === 'date' && !date)}
             className="btn btn-primary"
           >
             {publishing ? 'Публикуем…' : 'Опубликовать'}

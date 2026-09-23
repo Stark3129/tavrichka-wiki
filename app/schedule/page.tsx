@@ -51,7 +51,9 @@ export default async function SchedulePage({
   ).sort((a, b) => a.localeCompare(b, 'ru'));
 
   let rows: ScheduleRow[] = [];
+  let source: 'replacements' | 'template' = 'replacements';
   if (group) {
+    // Сначала — фактическое расписание (замены) на выбранную дату.
     const { data } = await supabase
       .from('schedule_rows')
       .select('*')
@@ -59,6 +61,22 @@ export default async function SchedulePage({
       .eq('date', selectedDate)
       .order('lesson', { ascending: true });
     rows = (data as ScheduleRow[] | null) ?? [];
+
+    // Замен на эту дату нет — показываем недельный шаблон (date is null).
+    if (rows.length === 0) {
+      const weekday = weekdayRu(selectedDate);
+      const { data: tpl } = await supabase
+        .from('schedule_rows')
+        .select('*')
+        .is('date', null)
+        .eq('group_name', group)
+        .ilike('day_week', weekday)
+        .order('lesson', { ascending: true });
+      if (tpl && tpl.length > 0) {
+        rows = tpl as ScheduleRow[];
+        source = 'template';
+      }
+    }
   }
 
   const dayLabel = rows[0]?.day_week || weekdayRu(selectedDate);
@@ -148,7 +166,13 @@ export default async function SchedulePage({
           На выбранную дату занятий нет.
         </p>
       ) : (
-        <div className="card overflow-hidden p-0">
+        <div>
+          <p className="mb-2 text-sm font-medium text-[var(--text-muted)]">
+            {source === 'replacements'
+              ? 'Фактическое расписание (замены)'
+              : 'Базовое расписание недели'}
+          </p>
+          <div className="card overflow-hidden p-0">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
@@ -176,6 +200,7 @@ export default async function SchedulePage({
                 ))}
               </tbody>
             </table>
+          </div>
           </div>
         </div>
       )}

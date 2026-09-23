@@ -231,3 +231,42 @@ export function parseScheduleMatrix(rows: unknown[][]): ParseResult {
 
   return { items, errors, conflicts };
 }
+
+export interface SemesterSheet {
+  name: string;
+  rows: unknown[][];
+}
+
+/**
+ * Разбор книги семестрового расписания: каждый лист — недельный шаблон.
+ * К каждому листу применяются те же правила матрицы (parseScheduleMatrix):
+ * заголовок по «Дни недели»/«пара», пары колонок группа + «Ауд.»,
+ * дубли из объединённых ячеек (первое непустое значение), расхождения → conflicts.
+ * Служебные строки («Утверждаю», «Согласовано», пустой день недели) пропускаются
+ * внутри parseScheduleMatrix. Ошибки и конфликты помечаются именем листа;
+ * листы без распознанной матрицы пропускаются молча.
+ */
+export function parseSemesterWorkbook(sheets: SemesterSheet[]): ParseResult {
+  const items: ParsedLesson[] = [];
+  const errors: string[] = [];
+  const conflicts: string[] = [];
+
+  for (const sheet of sheets) {
+    const res = parseScheduleMatrix(sheet.rows);
+
+    // Лист вообще не является матрицей расписания — не шумим ошибкой.
+    if (
+      res.items.length === 0 &&
+      res.errors.length === 1 &&
+      res.errors[0].startsWith('Не найдена строка-заголовок')
+    ) {
+      continue;
+    }
+
+    for (const e of res.errors) errors.push(`Лист «${sheet.name}»: ${e}`);
+    for (const c of res.conflicts) conflicts.push(`Лист «${sheet.name}»: ${c}`);
+    items.push(...res.items);
+  }
+
+  return { items, errors, conflicts };
+}
