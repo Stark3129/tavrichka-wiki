@@ -1,8 +1,19 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import type { Teacher } from '@/lib/types';
+
+/** Инициалы для заглушки: первые буквы первых двух слов ФИО. */
+function initials(fullName: string): string {
+  return fullName
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w.charAt(0).toUpperCase())
+    .join('');
+}
 
 export default function TeacherCard({ teacher }: { teacher: Teacher }) {
   return (
@@ -11,8 +22,25 @@ export default function TeacherCard({ teacher }: { teacher: Teacher }) {
       whileHover={{ y: -2 }}
       transition={{ type: 'spring', stiffness: 300 }}
     >
-      <h3 className="text-base font-bold text-[var(--text)]">{teacher.full_name}</h3>
-      <span className="badge mt-1.5 bg-[var(--accent)] text-white">{teacher.subject}</span>
+      <div className="flex items-center gap-3">
+        {teacher.photo_url ? (
+          <Image
+            src={teacher.photo_url}
+            alt={teacher.full_name}
+            width={64}
+            height={64}
+            className="h-16 w-16 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">
+            {initials(teacher.full_name)}
+          </span>
+        )}
+        <div className="min-w-0">
+          <h3 className="text-base font-bold text-[var(--text)]">{teacher.full_name}</h3>
+          <span className="badge mt-1.5 bg-[var(--accent)] text-white">{teacher.subject}</span>
+        </div>
+      </div>
       <p className="mt-2 text-sm text-[var(--text-muted)]">Кабинет: {teacher.cabinet || '—'}</p>
       {teacher.email && (
         <a

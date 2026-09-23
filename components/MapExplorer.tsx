@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
+import { getCorpus, weekdayRu } from '@/lib/cabinets';
 import type { LessonTime, MapFloor, MapObject, ScheduleRow } from '@/lib/types';
 
 /** Особые названия кнопок → фактическое значение cabinet в schedule_rows. */
@@ -10,6 +11,15 @@ const CABINET_OVERRIDE: Record<string, string> = {
   'Спортзал': 'с/з',
   'ЖД-18': 'жд18',
 };
+
+/** Дополнительные «корпуса» без схемы этажей — сетка собирается из расписания. */
+const SPECIAL_TABS: Array<{ label: string; slug: string }> = [
+  { label: 'ЖД', slug: 'жд' },
+  { label: 'Спортзал', slug: 'спортзал' },
+  { label: 'Актовый зал', slug: 'актовый' },
+];
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const CATEGORY_STYLES: Record<string, string> = {
   'аудитория': 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100',
@@ -48,6 +58,14 @@ function toMinutes(hhmmss: string): number | null {
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 }
 
+/** Сортировка кабинетов: сначала по числу в названии, потом по алфавиту. */
+function cabinetSort(a: string, b: string): number {
+  const na = Number(/\d+/.exec(a)?.[0] ?? NaN);
+  const nb = Number(/\d+/.exec(b)?.[0] ?? NaN);
+  if (!Number.isNaN(na) && !Number.isNaN(nb) && na !== nb) return na - nb;
+  return a.localeCompare(b, 'ru');
+}
+
 export default function MapExplorer({
   corpus,
   corpusOptions,
@@ -55,6 +73,9 @@ export default function MapExplorer({
   objects,
   times,
   today,
+  specialCorpus = null,
+  initialCabinet = null,
+  initialDate = null,
 }: {
   corpus: number;
   corpusOptions: number[];
@@ -62,6 +83,12 @@ export default function MapExplorer({
   objects: MapObject[];
   times: LessonTime[];
   today: string;
+  /** Название «виртуального» корпуса: 'ЖД' | 'Спортзал' | 'Актовый зал'. */
+  specialCorpus?: string | null;
+  /** Кабинет из URL ?cabinet= — открываем его панель при монтировании. */
+  initialCabinet?: string | null;
+  /** Дата из URL ?date= (ГГГГ-ММ-ДД). */
+  initialDate?: string | null;
 }) {
   const sortedFloors = useMemo(
     () => [...floors].sort((a, b) => a.sort - b.sort),
@@ -70,7 +97,24 @@ export default function MapExplorer({
   const [activeFloorId, setActiveFloorId] = useState<number | null>(
     sortedFloors[0]?.id ?? null
   );
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(() => {
+    if (!initialCabinet) return null;
+    // Прямая ссылка: подбираем объект карты по кабинету/названию.
+    const found = objects.find(
+      (o) =>
+        o.room === initialCabinet ||
+        CABINET_OVERRIDE[o.name] === initialCabinet ||
+        o.name === initialCabinet
+    );
+    return found?.id ?? null;
+  });
+  // Выбранный кабинет в «виртуальном» корпусе (ЖД/Спортзал/Актовый зал).
+  const [selectedCabinet, setSelectedCabinet] = useState<string | null>(initialCabinet);
+  const [specialCabinets, setSpecialCabinets] = useState<string[]>([]);
+  const [specialLoading, setSpecialLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(() =>
+    initialDate && DATE_RE.test(initialDate) ? initialDate : today
+  );
   const [todayRows, setTodayRows] = useState<ScheduleRow[]>([]);
   const [rowsState, setRowsState] = useState<'idle' | 'loading' | 'done'>('idle');
 
@@ -81,28 +125,82 @@ export default function MapExplorer({
   );
   const selected = objects.find((o) => o.id === selectedId) ?? null;
 
-  // Клик по кабинету: грузим «Сегодня здесь» (cabinet = room или override по названию).
+  // «Виртуальные» корпуса: собираем уникальные кабинеты из schedule_rows.
   useEffect(() => {
-    if (!selected) {
+    if (!specialCorpus) {
+      setSpecialCabinets([]);
+      return;
+    }
+    setSpecialLoading(true);
+    const supabase = createClient();
+    supabase
+      .from('schedule_rows')
+      .select('cabinet')
+      .not('cabinet', 'is', null)
+      .limit(2000)
+      .then(({ data }) => {
+        const set = new Set<string>();
+        ((data as Array<{ cabinet: string }> | null) ?? []).forEach((r) => {
+          if (r.cabinet && getCorpus(r.cabinet) === specialCorpus) {
+            set.add(r.cabinet);
+          }
+        });
+        setSpecialCabinets(Array.from(set).sort(cabinetSort));
+        setSpecialLoading(false);
+      });
+  }, [specialCorpus]);
+
+  // Фактический кабинет в расписании для выбранной кнопки.
+  const activeCabinet = specialCorpus
+    ? selectedCabinet
+    : selected
+      ? CABINET_OVERRIDE[selected.name] ?? selected.room
+      : null;
+
+  // Занятия в кабинете на выбранную дату: точная дата → недельный шаблон.
+  useEffect(() => {
+    if (!activeCabinet) {
       setTodayRows([]);
       setRowsState('idle');
       return;
     }
-    const cabinet = CABINET_OVERRIDE[selected.name] ?? selected.room;
+    let stale = false;
     setRowsState('loading');
     const supabase = createClient();
     supabase
       .from('schedule_rows')
       .select('*')
-      .eq('cabinet', cabinet)
-      .eq('date', today)
+      .eq('cabinet', activeCabinet)
+      .eq('date', selectedDate)
       .order('lesson', { ascending: true })
       .limit(100)
       .then(({ data }) => {
-        setTodayRows((data as ScheduleRow[] | null) ?? []);
-        setRowsState('done');
+        if (stale) return;
+        const exact = (data as ScheduleRow[] | null) ?? [];
+        if (exact.length > 0) {
+          setTodayRows(exact);
+          setRowsState('done');
+          return;
+        }
+        // Точных строк нет — недельный шаблон на день недели выбранной даты.
+        supabase
+          .from('schedule_rows')
+          .select('*')
+          .eq('cabinet', activeCabinet)
+          .is('date', null)
+          .ilike('day_week', weekdayRu(selectedDate))
+          .order('lesson', { ascending: true })
+          .limit(100)
+          .then(({ data: tpl }) => {
+            if (stale) return;
+            setTodayRows((tpl as ScheduleRow[] | null) ?? []);
+            setRowsState('done');
+          });
       });
-  }, [selected, today]);
+    return () => {
+      stale = true;
+    };
+  }, [activeCabinet, selectedDate]);
 
   const nowMin = moscowMinutesNow();
   const timeByLesson = useMemo(() => {
@@ -112,6 +210,7 @@ export default function MapExplorer({
   }, [times]);
 
   function isLessonNow(lesson: number): boolean {
+    if (selectedDate !== today) return false;
     const t = timeByLesson.get(lesson);
     if (!t) return false;
     const start = toMinutes(t.start_time);
@@ -124,27 +223,178 @@ export default function MapExplorer({
     return Array.from(set);
   }, [floorObjects]);
 
+  const specialSlug =
+    SPECIAL_TABS.find((t) => t.label === specialCorpus)?.slug ?? 'жд';
+
+  const panel = (
+    <aside className="card self-start p-4 lg:sticky lg:top-20">
+      {!activeCabinet ? (
+        <p className="text-sm text-slate-500">
+          Нажмите на кабинет на схеме или в списке, чтобы увидеть подробности
+          и занятия.
+        </p>
+      ) : (
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">
+            {specialCorpus ? activeCabinet : selected?.name ?? activeCabinet}
+          </h2>
+          {!specialCorpus && selected && (
+            <>
+              <span className="badge mt-1.5 bg-slate-100 text-slate-700">
+                {CATEGORY_LABELS[selected.category] ?? selected.category}
+              </span>
+              {selected.description && (
+                <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                  {selected.description}
+                </p>
+              )}
+            </>
+          )}
+
+          <h3 className="mt-4 border-t border-slate-100 pt-3 text-sm font-bold text-slate-900">
+            {selectedDate === today
+              ? 'Сегодня здесь'
+              : `Занятия на ${formatDate(selectedDate)}`}
+          </h3>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Занятия в кабинете «{activeCabinet}»
+          </p>
+
+          {/* GET-форма выбора даты — работает без клиентского JS */}
+          <form action="/map" method="get" className="mt-2">
+            <input
+              type="hidden"
+              name="corpus"
+              value={specialCorpus ? specialSlug : String(corpus)}
+            />
+            <input type="hidden" name="cabinet" value={activeCabinet} />
+            <label htmlFor="cabinet-date" className="label">
+              Дата
+            </label>
+            <input
+              id="cabinet-date"
+              type="date"
+              name="date"
+              defaultValue={selectedDate}
+              className="input"
+            />
+            <button type="submit" className="btn btn-outline mt-2 w-full text-sm">
+              Показать
+            </button>
+          </form>
+
+          {rowsState === 'loading' && (
+            <p className="mt-2 text-sm text-slate-500">Загружаем…</p>
+          )}
+          {rowsState === 'done' && todayRows.length === 0 && (
+            <p className="mt-2 text-sm text-slate-500">
+              На эту дату занятий в этом кабинете нет.
+            </p>
+          )}
+          {rowsState === 'done' && todayRows.length > 0 && (
+            <div className="mt-2 space-y-2">
+              {todayRows.map((row) => (
+                <div key={row.id} className="rounded-lg bg-slate-50 p-2.5 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="badge bg-indigo-100 text-indigo-700">
+                      {row.lesson} пара
+                    </span>
+                    {isLessonNow(row.lesson) && (
+                      <span className="badge bg-emerald-100 text-emerald-700">
+                        идёт сейчас
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 font-medium text-slate-900">{row.subject}</p>
+                  <p className="text-xs text-slate-600">
+                    {row.group_name}
+                    {row.teacher ? ` · ${row.teacher}` : ''}
+                  </p>
+                  {timeByLesson.get(row.lesson) && (
+                    <p className="text-xs text-slate-500">
+                      {timeByLesson.get(row.lesson)!.start_time.slice(0, 5)}–
+                      {timeByLesson.get(row.lesson)!.end_time.slice(0, 5)}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </aside>
+  );
+
   return (
     <div className="space-y-4">
       <div className="card flex flex-wrap items-center gap-3 p-4 sm:p-5">
         <h1 className="text-2xl font-extrabold text-slate-900">Карта</h1>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
           {corpusOptions.map((c) => (
             <a
               key={c}
               href={`/map?corpus=${c}`}
               className={cn(
                 'btn',
-                c === corpus ? 'btn-primary' : 'btn-outline'
+                !specialCorpus && c === corpus ? 'btn-primary' : 'btn-outline'
               )}
             >
               Корпус {c}
             </a>
           ))}
+          {SPECIAL_TABS.map((t) => (
+            <a
+              key={t.slug}
+              href={`/map?corpus=${t.slug}`}
+              className={cn(
+                'btn',
+                specialCorpus === t.label ? 'btn-primary' : 'btn-outline'
+              )}
+            >
+              {t.label}
+            </a>
+          ))}
         </div>
       </div>
 
-      {sortedFloors.length === 0 ? (
+      {specialCorpus ? (
+        // «Виртуальный» корпус: схемы этажей нет — сетка кабинетов из расписания.
+        <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
+          <div className="card p-4">
+            <h2 className="text-lg font-bold text-slate-900">Корпус {specialCorpus}</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Кабинеты, встречающиеся в расписании.
+            </p>
+            {specialLoading && (
+              <p className="mt-3 text-sm text-slate-500">Загружаем…</p>
+            )}
+            {!specialLoading && specialCabinets.length === 0 && (
+              <p className="mt-3 text-sm text-slate-500">
+                В расписании пока нет кабинетов этого корпуса.
+              </p>
+            )}
+            {specialCabinets.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {specialCabinets.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setSelectedCabinet(c)}
+                    className={cn(
+                      'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+                      CATEGORY_STYLES['аудитория'] ?? CATEGORY_FALLBACK,
+                      c === selectedCabinet && 'ring-2 ring-indigo-500'
+                    )}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {panel}
+        </div>
+      ) : sortedFloors.length === 0 ? (
         <p className="card p-6 text-center text-sm text-slate-500">
           Для этого корпуса этажи пока не добавлены.
         </p>
@@ -237,69 +487,7 @@ export default function MapExplorer({
             </div>
 
             {/* Боковая панель кабинета */}
-            <aside className="card self-start p-4 lg:sticky lg:top-20">
-              {!selected ? (
-                <p className="text-sm text-slate-500">
-                  Нажмите на кабинет на схеме или в списке, чтобы увидеть подробности
-                  и занятия «Сегодня здесь».
-                </p>
-              ) : (
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">{selected.name}</h2>
-                  <span className="badge mt-1.5 bg-slate-100 text-slate-700">
-                    {CATEGORY_LABELS[selected.category] ?? selected.category}
-                  </span>
-                  {selected.description && (
-                    <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                      {selected.description}
-                    </p>
-                  )}
-
-                  <h3 className="mt-4 border-t border-slate-100 pt-3 text-sm font-bold text-slate-900">
-                    Сегодня здесь
-                  </h3>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    Занятия в кабинете «{CABINET_OVERRIDE[selected.name] ?? selected.room}»
-                  </p>
-
-                  {rowsState === 'loading' && (
-                    <p className="mt-2 text-sm text-slate-500">Загружаем…</p>
-                  )}
-                  {rowsState === 'done' && todayRows.length === 0 && (
-                    <p className="mt-2 text-sm text-slate-500">Сегодня занятий нет.</p>
-                  )}
-                  {rowsState === 'done' && todayRows.length > 0 && (
-                    <div className="mt-2 space-y-2">
-                      {todayRows.map((row) => (
-                        <div key={row.id} className="rounded-lg bg-slate-50 p-2.5 text-sm">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="badge bg-indigo-100 text-indigo-700">
-                              {row.lesson} пара
-                            </span>
-                            {isLessonNow(row.lesson) && (
-                              <span className="badge bg-emerald-100 text-emerald-700">
-                                идёт сейчас
-                              </span>
-                            )}
-                          </div>
-                          <p className="mt-1 font-medium text-slate-900">{row.subject}</p>
-                          <p className="text-xs text-slate-600">
-                            {row.group_name}
-                            {row.teacher ? ` · ${row.teacher}` : ''}
-                          </p>
-                          {timeByLesson.get(row.lesson) && (
-                            <p className="text-xs text-slate-500">
-                              {timeByLesson.get(row.lesson)!.start_time.slice(0, 5)}–
-                              {timeByLesson.get(row.lesson)!.end_time.slice(0, 5)}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </aside>
+            {panel}
           </div>
         </>
       )}

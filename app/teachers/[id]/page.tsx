@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import EditSuggestionForm from '@/components/EditSuggestionForm';
@@ -14,6 +15,16 @@ function todayIso(): string {
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Инициалы для заглушки: первые буквы первых двух слов ФИО. */
+function initials(fullName: string): string {
+  return fullName
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w.charAt(0).toUpperCase())
+    .join('');
+}
 
 /** День недели по-русски с заглавной («Понедельник») для поиска в day_week. */
 function weekdayRu(iso: string): string {
@@ -108,8 +119,25 @@ export default async function TeacherPage({
       <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
         {/* Информация о преподавателе */}
         <section className="card p-5">
-          <h1 className="text-2xl font-extrabold text-slate-900">{teacher.full_name}</h1>
-          <span className="badge mt-2 bg-indigo-50 text-indigo-700">{teacher.subject}</span>
+          <div className="flex items-center gap-4">
+            {teacher.photo_url ? (
+              <Image
+                src={teacher.photo_url}
+                alt={teacher.full_name}
+                width={128}
+                height={128}
+                className="h-32 w-32 shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <span className="flex h-32 w-32 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-4xl font-bold text-indigo-700">
+                {initials(teacher.full_name)}
+              </span>
+            )}
+            <div className="min-w-0">
+              <h1 className="text-2xl font-extrabold text-slate-900">{teacher.full_name}</h1>
+              <span className="badge mt-2 bg-indigo-50 text-indigo-700">{teacher.subject}</span>
+            </div>
+          </div>
 
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex gap-2">

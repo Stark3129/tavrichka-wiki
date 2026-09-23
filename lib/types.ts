@@ -40,6 +40,7 @@ export interface Teacher {
   email: string;
   consultation: string;
   description: string;
+  photo_url: string;
   status: 'published' | 'hidden';
   created_at: string;
 }

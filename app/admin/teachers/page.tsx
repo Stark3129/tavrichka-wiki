@@ -18,6 +18,7 @@ const FIELD_LABELS: Record<string, string> = {
   consultation: 'Консультации',
   description: 'Описание',
   full_name: 'ФИО',
+  photo: 'Фото',
 };
 
 const EMPTY_FORM = {
@@ -41,6 +42,7 @@ export default function AdminTeachersPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [okMsg, setOkMsg] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   async function reload() {
     const supabase = createClient();
@@ -71,6 +73,7 @@ export default function AdminTeachersPage() {
     setEditingId(null);
     setForm({ ...EMPTY_FORM });
     setFormError('');
+    setPhotoFile(null);
   }
 
   function startEdit(t: Teacher) {
@@ -85,6 +88,7 @@ export default function AdminTeachersPage() {
       status: t.status,
     });
     setFormError('');
+    setPhotoFile(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -110,21 +114,49 @@ export default function AdminTeachersPage() {
       status: form.status,
     };
 
-    const { error } =
-      editingId === null
-        ? await supabase.from('teachers').insert(payload)
-        : await supabase.from('teachers').update(payload).eq('id', editingId);
+    try {
+      let teacherId: number;
+      if (editingId === null) {
+        const { data, error } = await supabase
+          .from('teachers')
+          .insert(payload)
+          .select('id')
+          .single();
+        if (error) throw new Error('Не удалось создать преподавателя.');
+        teacherId = (data as { id: number }).id;
+      } else {
+        teacherId = editingId;
+        const { error } = await supabase
+          .from('teachers')
+          .update(payload)
+          .eq('id', editingId);
+        if (error) throw new Error('Не удалось сохранить изменения.');
+      }
 
-    if (error) {
-      setFormError(
-        editingId === null
-          ? 'Не удалось создать преподавателя.'
-          : 'Не удалось сохранить изменения.'
-      );
-    } else {
+      // Загрузка фото: uploads/teachers/<id>.<ext>, затем записываем public URL.
+      if (photoFile) {
+        const ext = photoFile.name.includes('.')
+          ? (photoFile.name.split('.').pop() ?? 'jpg').toLowerCase()
+          : 'jpg';
+        const path = `teachers/${teacherId}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from('uploads')
+          .upload(path, photoFile, { cacheControl: '3600', upsert: true });
+        if (upErr) throw new Error('Не удалось загрузить фото в хранилище.');
+
+        const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(path);
+        const { error: phErr } = await supabase
+          .from('teachers')
+          .update({ photo_url: urlData.publicUrl })
+          .eq('id', teacherId);
+        if (phErr) throw new Error('Фото загружено, но путь не удалось сохранить.');
+      }
+
       setOkMsg(editingId === null ? 'Преподаватель добавлен.' : 'Изменения сохранены.');
       startCreate();
       await reload();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Неизвестная ошибка.');
     }
     setSaving(false);
   }
@@ -148,15 +180,41 @@ export default function AdminTeachersPage() {
   async function applyEdit(edit: TeacherEdit, approve: boolean) {
     const supabase = createClient();
     if (approve) {
-      // Применяем новое значение к полю преподавателя, затем статус approved.
-      const { error: upErr } = await supabase
-        .from('teachers')
-        .update({ [edit.field]: edit.new_value })
-        .eq('id', edit.teacher_id);
-      if (upErr) {
-        setOkMsg('');
-        setListError('Не удалось применить правку к преподавателю.');
-        return;
+      // Особый случай — фото: переносим файл из teachers/pending/ в teachers/<id>.<ext>
+      // и записываем public URL в photo_url.
+      if (edit.field === 'photo') {
+        try {
+          const ext = edit.new_value.includes('.')
+            ? (edit.new_value.split('.').pop() ?? 'jpg').toLowerCase()
+            : 'jpg';
+          const dest = `teachers/${edit.teacher_id}.${ext}`;
+          const { error: mvErr } = await supabase.storage
+            .from('uploads')
+            .move(edit.new_value, dest);
+          if (mvErr) throw new Error('move');
+
+          const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(dest);
+          const { error: upErr } = await supabase
+            .from('teachers')
+            .update({ photo_url: urlData.publicUrl })
+            .eq('id', edit.teacher_id);
+          if (upErr) throw new Error('update');
+        } catch {
+          setOkMsg('');
+          setListError('Не удалось применить фото к преподавателю.');
+          return;
+        }
+      } else {
+        // Обычные поля: применяем новое значение к полю преподавателя.
+        const { error: upErr } = await supabase
+          .from('teachers')
+          .update({ [edit.field]: edit.new_value })
+          .eq('id', edit.teacher_id);
+        if (upErr) {
+          setOkMsg('');
+          setListError('Не удалось применить правку к преподавателю.');
+          return;
+        }
       }
     }
     const { error } = await supabase
@@ -278,6 +336,19 @@ export default function AdminTeachersPage() {
           />
         </div>
 
+        <div className="mt-3">
+          <label htmlFor="t-photo" className="label">
+            Фото (необязательно)
+          </label>
+          <input
+            id="t-photo"
+            type="file"
+            accept="image/*"
+            onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+            className="input"
+          />
+        </div>
+
         {formError && (
           <p role="alert" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
             {formError}
@@ -325,9 +396,30 @@ export default function AdminTeachersPage() {
                 <span className="text-xs text-slate-500">{formatDate(ed.created_at)}</span>
               </div>
               <p className="mt-1.5 text-sm text-slate-700">
-                <span className="text-slate-500 line-through">{ed.old_value || '—'}</span>
-                {' → '}
-                <span className="font-medium">{ed.new_value}</span>
+                {ed.field === 'photo' ? (
+                  // Превью предложенного фото (120px) — файл лежит в teachers/pending/.
+                  <span className="flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={createClient()
+                        .storage.from('uploads')
+                        .getPublicUrl(ed.new_value).data.publicUrl}
+                      alt="Предложенное фото"
+                      width={120}
+                      height={120}
+                      className="h-[120px] w-[120px] rounded-full object-cover"
+                    />
+                    <span className="text-xs text-slate-500">
+                      Предложено новое фото ({ed.new_value})
+                    </span>
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-slate-500 line-through">{ed.old_value || '—'}</span>
+                    {' → '}
+                    <span className="font-medium">{ed.new_value}</span>
+                  </>
+                )}
               </p>
               {ed.comment && (
                 <p className="mt-1 text-xs text-slate-500">Комментарий: {ed.comment}</p>

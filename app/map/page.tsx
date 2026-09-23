@@ -11,23 +11,43 @@ function todayIso(): string {
   );
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * «Виртуальные» корпуса без схемы этажей (сетка собирается из расписания).
+ * Возвращает их название или null для обычного числового корпуса.
+ */
+function specialCorpusFromParam(param: string): string | null {
+  const s = (param || '').trim().toLowerCase();
+  if (!s) return null;
+  if (s === 'жд' || s === 'жд-корпус') return 'ЖД';
+  if (s.startsWith('спорт')) return 'Спортзал';
+  if (s.startsWith('актов')) return 'Актовый зал';
+  return null;
+}
+
 export default async function MapPage({
   searchParams,
 }: {
-  searchParams: Promise<{ corpus?: string }>;
+  searchParams: Promise<{ corpus?: string; cabinet?: string; date?: string }>;
 }) {
-  const { corpus = '' } = await searchParams;
+  const { corpus = '', cabinet = '', date = '' } = await searchParams;
+  const specialCorpus = specialCorpusFromParam(corpus);
   const corpusNum = Number(corpus) || 1;
 
   const supabase = await createClient();
 
   const [floorsRes, objectsRes, timesRes] = await Promise.all([
-    supabase
-      .from('map_floors')
-      .select('*')
-      .eq('corpus', corpusNum)
-      .order('sort', { ascending: true }),
-    supabase.from('map_objects').select('*').eq('corpus', corpusNum),
+    specialCorpus
+      ? Promise.resolve({ data: [] })
+      : supabase
+          .from('map_floors')
+          .select('*')
+          .eq('corpus', corpusNum)
+          .order('sort', { ascending: true }),
+    specialCorpus
+      ? Promise.resolve({ data: [] })
+      : supabase.from('map_objects').select('*').eq('corpus', corpusNum),
     supabase.from('lesson_times').select('*').order('lesson', { ascending: true }),
   ]);
 
@@ -51,6 +71,9 @@ export default async function MapPage({
       objects={objects}
       times={times}
       today={todayIso()}
+      specialCorpus={specialCorpus}
+      initialCabinet={cabinet || null}
+      initialDate={DATE_RE.test(date) ? date : null}
     />
   );
 }

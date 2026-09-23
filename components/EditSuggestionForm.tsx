@@ -5,7 +5,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { Teacher } from '@/lib/types';
 
-type EditableField = 'subject' | 'cabinet' | 'email' | 'consultation' | 'description';
+type EditableField = 'subject' | 'cabinet' | 'email' | 'consultation' | 'description' | 'photo';
 
 const FIELDS: Array<{ value: EditableField; label: string }> = [
   { value: 'subject', label: 'Предмет' },
@@ -13,6 +13,7 @@ const FIELDS: Array<{ value: EditableField; label: string }> = [
   { value: 'email', label: 'Почта' },
   { value: 'consultation', label: 'Консультации' },
   { value: 'description', label: 'Описание' },
+  { value: 'photo', label: 'Фото' },
 ];
 
 export default function EditSuggestionForm({ teacher }: { teacher: Teacher }) {
@@ -21,6 +22,7 @@ export default function EditSuggestionForm({ teacher }: { teacher: Teacher }) {
   const [field, setField] = useState<EditableField>('subject');
   const [oldValue, setOldValue] = useState<string>(teacher.subject);
   const [newValue, setNewValue] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [comment, setComment] = useState('');
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
@@ -40,8 +42,9 @@ export default function EditSuggestionForm({ teacher }: { teacher: Teacher }) {
 
   function handleFieldChange(next: EditableField) {
     setField(next);
-    setOldValue((teacher[next] as string) ?? '');
+    setOldValue(next === 'photo' ? (teacher.photo_url ?? '') : (teacher[next] as string) ?? '');
     setNewValue('');
+    setPhotoFile(null);
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -50,11 +53,36 @@ export default function EditSuggestionForm({ teacher }: { teacher: Teacher }) {
     setSending(true);
 
     const supabase = createClient();
+
+    let finalNewValue = newValue.trim();
+
+    // Для фото: загружаем файл в uploads/teachers/pending/<uuid>.<ext>
+    if (field === 'photo') {
+      if (!photoFile) {
+        setErrorMsg('Выберите файл фото.');
+        setSending(false);
+        return;
+      }
+      const ext = photoFile.name.includes('.')
+        ? (photoFile.name.split('.').pop() ?? 'jpg').toLowerCase()
+        : 'jpg';
+      const path = `teachers/pending/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('uploads')
+        .upload(path, photoFile, { cacheControl: '3600', upsert: false });
+      if (upErr) {
+        setErrorMsg('Не удалось загрузить фото в хранилище. Попробуйте ещё раз.');
+        setSending(false);
+        return;
+      }
+      finalNewValue = path;
+    }
+
     const { error } = await supabase.from('teacher_edits').insert({
       teacher_id: teacher.id,
       field,
       old_value: oldValue,
-      new_value: newValue,
+      new_value: finalNewValue,
       comment,
       author_id: userId,
       status: 'pending',
@@ -68,6 +96,7 @@ export default function EditSuggestionForm({ teacher }: { teacher: Teacher }) {
 
     setDone(true);
     setNewValue('');
+    setPhotoFile(null);
     setComment('');
     setSending(false);
   }
@@ -112,34 +141,56 @@ export default function EditSuggestionForm({ teacher }: { teacher: Teacher }) {
             ))}
           </select>
         </div>
-        <div>
-          <label htmlFor="edit-old" className="label">
-            Текущее значение
-          </label>
-          <input
-            id="edit-old"
-            type="text"
-            value={oldValue}
-            onChange={(e) => setOldValue(e.target.value)}
-            className="input"
-          />
-        </div>
+        {field !== 'photo' && (
+          <div>
+            <label htmlFor="edit-old" className="label">
+              Текущее значение
+            </label>
+            <input
+              id="edit-old"
+              type="text"
+              value={oldValue}
+              onChange={(e) => setOldValue(e.target.value)}
+              className="input"
+            />
+          </div>
+        )}
       </div>
 
-      <div className="mt-3">
-        <label htmlFor="edit-new" className="label">
-          Новое значение
-        </label>
-        <textarea
-          id="edit-new"
-          required
-          rows={3}
-          value={newValue}
-          onChange={(e) => setNewValue(e.target.value)}
-          placeholder="Что должно быть вместо текущего"
-          className="input resize-y"
-        />
-      </div>
+      {field === 'photo' ? (
+        <div className="mt-3">
+          <label htmlFor="edit-photo" className="label">
+            Файл фото *
+          </label>
+          <input
+            id="edit-photo"
+            type="file"
+            accept="image/*"
+            onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+            className="input"
+          />
+          {teacher.photo_url && (
+            <p className="mt-1 text-xs text-slate-500">
+              Текущее фото уже установлено — новое заменит его после одобрения.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="mt-3">
+          <label htmlFor="edit-new" className="label">
+            Новое значение
+          </label>
+          <textarea
+            id="edit-new"
+            required
+            rows={3}
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            placeholder="Что должно быть вместо текущего"
+            className="input resize-y"
+          />
+        </div>
+      )}
 
       <div className="mt-3">
         <label htmlFor="edit-comment" className="label">
@@ -166,7 +217,11 @@ export default function EditSuggestionForm({ teacher }: { teacher: Teacher }) {
         </p>
       )}
 
-      <button type="submit" disabled={sending || newValue.trim() === ''} className="btn btn-primary mt-4">
+      <button
+        type="submit"
+        disabled={sending || (field === 'photo' ? !photoFile : newValue.trim() === '')}
+        className="btn btn-primary mt-4"
+      >
         {sending ? 'Отправляем…' : 'Отправить правку'}
       </button>
     </form>
