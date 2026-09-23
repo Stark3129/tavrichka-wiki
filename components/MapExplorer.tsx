@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatDate } from '@/lib/utils';
 import { weekdayRu } from '@/lib/cabinets';
+import { normalizeCabinet } from '@/lib/cabinet-mapping';
 import type { LessonTime, MapFloor, MapObject, ScheduleRow } from '@/lib/types';
 
 /** Особые названия кнопок → фактическое значение cabinet в schedule_rows. */
@@ -143,8 +144,16 @@ export default function MapExplorer({
       .limit(2000)
       .then(({ data, error }) => {
         // Кабинеты, уже покрытые картой этого корпуса, не дублируем.
+        // Сравниваем в нормализованном виде: «14» на схеме = «жд14» в расписании.
         const covered = new Set(
-          objects.flatMap((o) => [o.room, o.name, CABINET_OVERRIDE[o.name] ?? o.name])
+          objects
+            .flatMap((o) => [
+              o.room,
+              o.name,
+              CABINET_OVERRIDE[o.name] ?? o.name,
+            ])
+            .filter((x): x is string => Boolean(x))
+            .flatMap((x) => [x, normalizeCabinet(x, corpus)])
         );
         const set = new Set<string>();
         if (!error) {
@@ -164,9 +173,14 @@ export default function MapExplorer({
   }, [corpus, objects]);
 
   // Фактический кабинет в расписании: выбранный кликом или объект карты.
+  // Кабинеты Корпуса 2 нормализуются («14» → «жд14»), т.к. в расписании
+  // они записаны с префиксом «жд».
   const activeCabinet =
-    selectedCabinet ??
-    (selected ? CABINET_OVERRIDE[selected.name] ?? selected.room : null);
+    normalizeCabinet(
+      selectedCabinet ??
+        (selected ? CABINET_OVERRIDE[selected.name] ?? selected.room : ''),
+      corpus
+    ) || null;
 
   // Занятия в кабинете на выбранную дату: точная дата → недельный шаблон.
   useEffect(() => {
