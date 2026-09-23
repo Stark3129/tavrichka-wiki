@@ -1,8 +1,16 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import Header from '@/components/Header';
 import SearchModal from '@/components/SearchModal';
 import { SearchProvider } from '@/lib/search-context';
 import './globals.css';
+
+// Единый шрифт сайта: Inter с поддержкой кириллицы.
+const inter = Inter({
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-inter',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: {
@@ -20,7 +28,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru">
-      <body className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--text)]">
+      <body
+        className={`flex min-h-screen flex-col bg-[var(--bg)] text-[var(--text)] ${inter.variable} font-sans`}
+      >
         <SearchProvider>
           <Header />
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
