@@ -8,17 +8,25 @@ export const metadata = { title: 'Преподаватели' };
 export default async function TeachersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string }>;
 }) {
-  const { q = '' } = await searchParams;
+  const { q = '', sort = '' } = await searchParams;
   const query = q.trim().toLowerCase();
+  const sortMode = sort === 'subject' ? 'subject' : 'name';
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let queryBuilder = supabase
     .from('teachers')
     .select('*')
-    .eq('status', 'published')
-    .order('full_name', { ascending: true });
+    .eq('status', 'published');
+
+  // Сортировка на сервере: по имени или по предмету (+ имя).
+  queryBuilder =
+    sortMode === 'subject'
+      ? queryBuilder.order('subject', { ascending: true }).order('full_name', { ascending: true })
+      : queryBuilder.order('full_name', { ascending: true });
+
+  const { data, error } = await queryBuilder;
 
   const all = (data as Teacher[] | null) ?? [];
   const teachers = query
@@ -51,6 +59,27 @@ export default async function TeachersPage({
             </Link>
           )}
         </form>
+
+        {/* Переключатель сортировки (учитываем активный поиск) */}
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-[var(--text-muted)]">Сортировка:</span>
+          <Link
+            href={`/teachers?sort=name${query ? `&q=${encodeURIComponent(q)}` : ''}`}
+            className={
+              sortMode === 'name' ? 'btn btn-primary text-xs' : 'btn btn-outline text-xs'
+            }
+          >
+            По имени
+          </Link>
+          <Link
+            href={`/teachers?sort=subject${query ? `&q=${encodeURIComponent(q)}` : ''}`}
+            className={
+              sortMode === 'subject' ? 'btn btn-primary text-xs' : 'btn btn-outline text-xs'
+            }
+          >
+            По предмету
+          </Link>
+        </div>
       </div>
 
       {error && (

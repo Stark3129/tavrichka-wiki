@@ -4,6 +4,7 @@ import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { createClient } from '@/lib/supabase/client';
 import { parseScheduleMatrix, type ParsedLesson } from '@/lib/parse-schedule';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 type Mode = 'append' | 'replace';
 
@@ -140,6 +141,8 @@ export default function AdminImportPage() {
 
   return (
     <div className="space-y-4">
+      <Breadcrumbs items={[{ label: 'Админ', href: '/admin' }, { label: 'Импорт расписания' }]} />
+
       <div className="card p-4 sm:p-5">
         <h1 className="text-2xl font-extrabold text-slate-900">Импорт расписания</h1>
         <p className="mt-1 text-sm text-slate-500">

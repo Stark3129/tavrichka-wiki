@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import type { MapFloor, MapObject } from '@/lib/types';
 
 const CATEGORIES = [
@@ -185,6 +186,8 @@ export default function AdminMapPage() {
 
   return (
     <div className="space-y-4">
+      <Breadcrumbs items={[{ label: 'Админ', href: '/admin' }, { label: 'Карта' }]} />
+
       {/* Форма объекта карты */}
       <form onSubmit={saveObject} className="card p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-3">

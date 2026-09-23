@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { formatDate } from '@/lib/utils';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import type { Teacher, TeacherEdit } from '@/lib/types';
 
 const STATUS_BADGE: Record<Teacher['status'], string> = {
@@ -172,6 +173,8 @@ export default function AdminTeachersPage() {
 
   return (
     <div className="space-y-4">
+      <Breadcrumbs items={[{ label: 'Админ', href: '/admin' }, { label: 'Преподаватели' }]} />
+
       <form onSubmit={handleSave} className="card p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-extrabold text-slate-900">

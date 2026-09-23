@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
+import ShareSchedule from '@/components/ShareSchedule';
 import type { ScheduleRow } from '@/lib/types';
 
 export const metadata = { title: 'Расписание' };
@@ -68,9 +69,17 @@ export default async function SchedulePage({
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-extrabold text-slate-900">Расписание</h1>
           {group && (
-            <span className="ml-auto text-xs text-slate-500">
+            <span className="ml-auto text-xs text-[var(--text-muted)]">
               {formatDate(selectedDate)} · {dayLabel}
             </span>
+          )}
+          {group && rows.length > 0 && (
+            <ShareSchedule
+              group={group}
+              date={selectedDate}
+              dayLabel={dayLabel}
+              rows={rows}
+            />
           )}
         </div>
 
@@ -143,7 +152,7 @@ export default async function SchedulePage({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-[var(--border)] bg-[var(--bg)] text-left text-xs uppercase tracking-wide text-[var(--text-muted)]">
                   <th className="px-3 py-2.5">День</th>
                   <th className="px-3 py-2.5">Пара</th>
                   <th className="px-3 py-2.5">Предмет</th>
@@ -153,14 +162,14 @@ export default async function SchedulePage({
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-b border-slate-100 hover:bg-slate-50">
+                  <tr key={r.id} className="border-b border-[var(--border)] hover:bg-[var(--bg)]">
                     <td className="whitespace-nowrap px-3 py-2.5">
                       {r.day_week || dayLabel}
                     </td>
                     <td className="px-3 py-2.5">
-                      <span className="badge bg-indigo-50 text-indigo-700">{r.lesson}</span>
+                      <span className="badge bg-[var(--accent)] text-white">{r.lesson}</span>
                     </td>
-                    <td className="px-3 py-2.5 font-medium text-slate-900">{r.subject}</td>
+                    <td className="px-3 py-2.5 font-medium text-[var(--text)]">{r.subject}</td>
                     <td className="px-3 py-2.5">{r.teacher}</td>
                     <td className="px-3 py-2.5">{r.cabinet}</td>
                   </tr>

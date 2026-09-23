@@ -38,7 +38,7 @@ export default function ReplacementTable({
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-extrabold text-slate-900">Замены</h1>
         {updatedAt && (
-          <span className="ml-auto text-xs text-slate-500">
+          <span className="ml-auto text-xs text-[var(--text-muted)]">
             Обновлено: {formatDate(updatedAt)}
           </span>
         )}
@@ -102,7 +102,7 @@ export default function ReplacementTable({
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr className="border-b border-[var(--border)] text-left text-xs uppercase tracking-wide text-[var(--text-muted)]">
                 <th className="px-2 py-2">Дата</th>
                 <th className="px-2 py-2">Группа</th>
                 <th className="px-2 py-2">Пара</th>
@@ -115,7 +115,7 @@ export default function ReplacementTable({
             </thead>
             <tbody>
               {filtered.map((r) => (
-                <tr key={r.id} className="border-b border-slate-100 hover:bg-slate-50">
+                <tr key={r.id} className="border-b border-[var(--border)] hover:bg-[var(--bg)]">
                   <td className="whitespace-nowrap px-2 py-2">{formatDate(r.r_date)}</td>
                   <td className="px-2 py-2 font-medium text-slate-900">{r.group_name}</td>
                   <td className="px-2 py-2">{r.lesson}</td>

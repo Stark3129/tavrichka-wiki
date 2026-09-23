@@ -3,9 +3,13 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Menu, Search, X } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+import ThemeToggle from '@/components/ThemeToggle';
+import { useSearch } from '@/lib/search-context';
 
 const NAV = [
   { href: '/', label: 'Лента' },
@@ -13,6 +17,7 @@ const NAV = [
   { href: '/schedule', label: 'Расписание' },
   { href: '/teachers', label: 'Преподаватели' },
   { href: '/map', label: 'Карта' },
+  { href: '/about', label: 'О проекте' },
 ];
 
 export default function Header() {
@@ -21,6 +26,8 @@ export default function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { setOpen: setSearchOpen } = useSearch();
 
   useEffect(() => {
     const supabase = createClient();
@@ -64,11 +71,11 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--bg-card)]/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <Link
           href="/"
-          className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-slate-900"
+          className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-[var(--text)]"
         >
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-600 text-sm font-black text-white">
             ТВ
@@ -76,7 +83,8 @@ export default function Header() {
           Тавричка&nbsp;Вики
         </Link>
 
-        <nav className="flex flex-wrap items-center gap-1 text-sm font-medium">
+        {/* Десктопное меню */}
+        <nav className="hidden flex-wrap items-center gap-1 text-sm font-medium sm:flex">
           {NAV.map((item) => {
             const active =
               item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
@@ -87,8 +95,8 @@ export default function Header() {
                 className={cn(
                   'rounded-lg px-3 py-1.5 transition-colors',
                   active
-                    ? 'bg-indigo-50 text-indigo-700'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    ? 'bg-[var(--accent)] text-white'
+                    : 'text-[var(--text-muted)] hover:bg-[var(--border)] hover:text-[var(--text)]'
                 )}
               >
                 {item.label}
@@ -106,7 +114,18 @@ export default function Header() {
           )}
         </nav>
 
-        <div className="ml-auto">
+        {/* Кнопка-бургер для мобильных (<640px) */}
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-expanded={menuOpen}
+          aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
+          className="btn btn-outline ml-auto !px-2.5 sm:hidden"
+        >
+          {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+        </button>
+
+        <div className="ml-auto flex items-center gap-2">
           {user ? (
             <button
               type="button"
@@ -121,8 +140,63 @@ export default function Header() {
               Вход
             </Link>
           )}
+          {/* Кнопка поиска — открывает глобальную модалку (Ctrl/Cmd+K) */}
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-label="Поиск"
+            title="Поиск (Ctrl+K)"
+            className="btn btn-outline !px-2.5"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+          <ThemeToggle />
         </div>
       </div>
+
+      {/* Выпадающее мобильное меню */}
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="overflow-hidden border-t border-[var(--border)] sm:hidden"
+          >
+            <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3 text-sm font-medium">
+              {NAV.map((item) => {
+                const active =
+                  item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMenuOpen(false)}
+                    className={cn(
+                      'rounded-lg px-3 py-2 transition-colors',
+                      active
+                        ? 'bg-[var(--accent)] text-white'
+                        : 'text-[var(--text-muted)] hover:bg-[var(--border)] hover:text-[var(--text)]'
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-lg px-3 py-2 font-semibold text-amber-600 hover:bg-amber-50"
+                >
+                  Админ
+                </Link>
+              )}
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }

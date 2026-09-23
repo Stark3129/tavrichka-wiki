@@ -2,7 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Светлая тема. Единый яркий акцент — индиго (indigo-600). */
+/* Светлая и тёмная темы через CSS-переменные.
+   Единый яркий акцент — индиго (indigo-600). */
+
+:root {
+  --bg: #f8fafc; /* slate-50 */
+  --bg-card: #ffffff;
+  --text: #0f172a; /* slate-900 */
+  --text-muted: #64748b; /* slate-500 */
+  --border: #e2e8f0; /* slate-200 */
+  --accent: #4f46e5; /* indigo-600 */
+}
+
+.dark {
+  --bg: #0f172a; /* slate-900 */
+  --bg-card: #1e293b; /* slate-800 */
+  --text: #f1f5f9; /* slate-100 */
+  --text-muted: #94a3b8; /* slate-400 */
+  --border: #334155; /* slate-700 */
+  --accent: #6366f1; /* indigo-500 */
+}
 
 @layer base {
   html {
@@ -10,14 +29,18 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    background-color: var(--bg);
+    color: var(--text);
+    @apply antialiased;
   }
 }
 
 @layer components {
   /* Карточка: скругления, тонкая рамка, мягкая тень */
   .card {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+    @apply rounded-xl border shadow-sm;
   }
 
   /* Кнопки: базовый класс + цветовые варианты */
@@ -26,20 +49,49 @@
   }
 
   .btn-primary {
-    @apply bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800;
+    background-color: var(--accent);
+    color: #ffffff;
+  }
+
+  .btn-primary:hover {
+    filter: brightness(0.92);
   }
 
   .btn-outline {
-    @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 active:bg-slate-200;
+    border-color: var(--border);
+    background-color: var(--bg-card);
+    color: var(--text);
+  }
+
+  .btn-outline:hover {
+    background-color: var(--border);
   }
 
   /* Формы */
   .label {
-    @apply mb-1 block text-sm font-medium text-slate-700;
+    @apply mb-1 block text-sm font-medium;
+    color: var(--text);
   }
 
   .input {
-    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100;
+    border-color: var(--border);
+    background-color: var(--bg-card);
+    color: var(--text);
+    @apply w-full rounded-lg px-3 py-2 text-sm;
+  }
+
+  .input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .input:focus {
+    border-color: var(--accent);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+
+  .input:disabled {
+    opacity: 0.6;
   }
 
   /* Бейджи (тип поста, статус, номер пары) */

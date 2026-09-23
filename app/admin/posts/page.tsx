@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatDate } from '@/lib/utils';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import type { Post } from '@/lib/types';
 
 const TYPES: Array<{ value: Post['type']; label: string }> = [
@@ -120,6 +121,8 @@ export default function AdminPostsPage() {
 
   return (
     <div className="space-y-4">
+      <Breadcrumbs items={[{ label: 'Админ', href: '/admin' }, { label: 'Посты' }]} />
+
       <form onSubmit={handleCreate} className="card p-4 sm:p-5">
         <h1 className="text-2xl font-extrabold text-slate-900">Новый пост</h1>
 

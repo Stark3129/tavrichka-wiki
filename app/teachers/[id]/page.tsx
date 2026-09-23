@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import EditSuggestionForm from '@/components/EditSuggestionForm';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import { formatDate } from '@/lib/utils';
 import type { ScheduleRow, Teacher } from '@/lib/types';
 
@@ -62,6 +63,10 @@ export default async function TeacherPage({
 
   return (
     <div className="space-y-4">
+      <Breadcrumbs
+        items={[{ label: 'Преподаватели', href: '/teachers' }, { label: teacher.full_name }]}
+      />
+
       <Link
         href="/teachers"
         className="inline-block text-sm font-medium text-indigo-600 hover:underline"
