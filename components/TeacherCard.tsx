@@ -18,7 +18,7 @@ function initials(fullName: string): string {
 export default function TeacherCard({ teacher }: { teacher: Teacher }) {
   return (
     <motion.article
-      className="card p-4"
+      className="card min-h-0 overflow-hidden p-4"
       whileHover={{ y: -2 }}
       transition={{ type: 'spring', stiffness: 300 }}
     >
@@ -38,7 +38,9 @@ export default function TeacherCard({ teacher }: { teacher: Teacher }) {
         )}
         <div className="min-w-0">
           <h3 className="text-base font-bold text-[var(--text)]">{teacher.full_name}</h3>
-          <span className="badge mt-1.5 bg-[var(--accent)] text-white">{teacher.subject}</span>
+          <span className="badge mt-1.5 block max-w-full whitespace-normal bg-[var(--accent)] text-left text-white line-clamp-2 break-words">
+            {teacher.subject}
+          </span>
         </div>
       </div>
       <p className="mt-2 text-sm text-[var(--text-muted)]">Кабинет: {teacher.cabinet || '—'}</p>
