@@ -72,7 +72,9 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-white/10 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 shadow-md md:from-cyan-500/80 md:via-blue-600/80 md:to-indigo-600/80 md:backdrop-blur-xl">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-x-4 px-4">
+        {/* Левая часть: логотип и навигация */}
+        <div className="flex items-center gap-4">
         <Link
           href="/"
           className="flex items-center gap-2 text-lg font-bold tracking-tight text-white"
@@ -113,19 +115,21 @@ export default function Header() {
             </Link>
           )}
         </nav>
+        </div>
 
-        {/* Кнопка-бургер для мобильных (<640px) */}
-        <button
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-expanded={menuOpen}
-          aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
-          className="btn ml-auto !px-2.5 !rounded-lg !border-white/30 !bg-white/10 !text-white sm:hidden"
-        >
-          {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-        </button>
+        {/* Правая часть: бургер (мобильные), Выход/Вход, поиск, тема */}
+        <div className="flex items-center gap-2">
+          {/* Кнопка-бургер для мобильных (<640px) */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-expanded={menuOpen}
+            aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
+            className="btn !px-2.5 !rounded-lg !border-white/30 !bg-white/10 !text-white sm:hidden"
+          >
+            {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
 
-        <div className="ml-auto flex items-center gap-2">
           {user ? (
             <button
               type="button"
