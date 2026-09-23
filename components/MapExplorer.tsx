@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatDate } from '@/lib/utils';
-import { getCorpus, weekdayRu } from '@/lib/cabinets';
+import { weekdayRu } from '@/lib/cabinets';
 import type { LessonTime, MapFloor, MapObject, ScheduleRow } from '@/lib/types';
 
 /** Особые названия кнопок → фактическое значение cabinet в schedule_rows. */
@@ -11,13 +11,6 @@ const CABINET_OVERRIDE: Record<string, string> = {
   'Спортзал': 'с/з',
   'ЖД-18': 'жд18',
 };
-
-/** Дополнительные «корпуса» без схемы этажей — сетка собирается из расписания. */
-const SPECIAL_TABS: Array<{ label: string; slug: string }> = [
-  { label: 'ЖД', slug: 'жд' },
-  { label: 'Спортзал', slug: 'спортзал' },
-  { label: 'Актовый зал', slug: 'актовый' },
-];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -58,16 +51,14 @@ function toMinutes(hhmmss: string): number | null {
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 }
 
-/** Статические списки кабинетов «виртуальных» корпусов — сетка не может
- * остаться пустой, даже если запрос к расписанию не вернул данных. */
-const STATIC_CABINETS: Record<string, string[]> = {
-  ЖД: [
-    'жд4', 'жд5', 'жд8', 'жд9', 'жд10', 'жд11', 'жд13', 'жд14', 'жд15',
-    'жд17', 'жд18', 'жд19', 'жд20', 'жд21', 'жд23',
-  ],
-  Спортзал: ['с/з'],
-  'Актовый зал': ['а/з'],
-};
+/** Кабинеты, не отмеченные на схеме (ЖД-корпус, спортзал, актовый зал):
+ * показываются отдельной сеткой в Корпусе 2, собираются из расписания.
+ * Статический список — гарантия, что сетка не пустая при ошибке запроса. */
+const EXTRA_CABINET_RE = /^(жд\d*|с\/з|а\/з)$/i;
+const EXTRA_STATIC_CABINETS = [
+  'жд4', 'жд5', 'жд8', 'жд9', 'жд10', 'жд11', 'жд13', 'жд14', 'жд15',
+  'жд17', 'жд18', 'жд19', 'жд20', 'жд21', 'жд23', 'с/з', 'а/з',
+];
 
 /** Сортировка кабинетов: сначала по числу в названии, потом по алфавиту. */
 function cabinetSort(a: string, b: string): number {
@@ -84,7 +75,6 @@ export default function MapExplorer({
   objects,
   times,
   today,
-  specialCorpus = null,
   initialCabinet = null,
   initialDate = null,
 }: {
@@ -94,8 +84,6 @@ export default function MapExplorer({
   objects: MapObject[];
   times: LessonTime[];
   today: string;
-  /** Название «виртуального» корпуса: 'ЖД' | 'Спортзал' | 'Актовый зал'. */
-  specialCorpus?: string | null;
   /** Кабинет из URL ?cabinet= — открываем его панель при монтировании. */
   initialCabinet?: string | null;
   /** Дата из URL ?date= (ГГГГ-ММ-ДД). */
@@ -119,11 +107,12 @@ export default function MapExplorer({
     );
     return found?.id ?? null;
   });
-  // Выбранный кабинет в «виртуальном» корпусе (ЖД/Спортзал/Актовый зал).
+  // Кабинет, выбранный кликом (в т.ч. жд*, с/з, а/з из дополнительной сетки).
   const [selectedCabinet, setSelectedCabinet] = useState<string | null>(initialCabinet);
-  const [specialCabinets, setSpecialCabinets] = useState<string[]>([]);
-  const [specialLoading, setSpecialLoading] = useState(false);
-  const [specialError, setSpecialError] = useState(false);
+  // Кабинеты из расписания, которых нет на схеме (показываются в Корпусе 2).
+  const [extraCabinets, setExtraCabinets] = useState<string[]>([]);
+  const [extraLoading, setExtraLoading] = useState(false);
+  const [extraError, setExtraError] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(() =>
     initialDate && DATE_RE.test(initialDate) ? initialDate : today
   );
@@ -137,16 +126,15 @@ export default function MapExplorer({
   );
   const selected = objects.find((o) => o.id === selectedId) ?? null;
 
-  // «Виртуальные» корпуса: собираем уникальные кабинеты из schedule_rows,
-  // дополняя статическим списком (на случай ошибок запроса или пустых данных).
+  // Кабинеты из расписания, не отмеченные на схеме, — показываем в Корпусе 2.
   useEffect(() => {
-    if (!specialCorpus) {
-      setSpecialCabinets([]);
-      setSpecialError(false);
+    if (corpus !== 2) {
+      setExtraCabinets([]);
+      setExtraError(false);
       return;
     }
-    setSpecialLoading(true);
-    setSpecialError(false);
+    setExtraLoading(true);
+    setExtraError(false);
     const supabase = createClient();
     supabase
       .from('schedule_rows')
@@ -154,26 +142,31 @@ export default function MapExplorer({
       .not('cabinet', 'is', null)
       .limit(2000)
       .then(({ data, error }) => {
-        const set = new Set<string>(STATIC_CABINETS[specialCorpus] ?? []);
+        // Кабинеты, уже покрытые картой этого корпуса, не дублируем.
+        const covered = new Set(
+          objects.flatMap((o) => [o.room, o.name, CABINET_OVERRIDE[o.name] ?? o.name])
+        );
+        const set = new Set<string>();
         if (!error) {
           (data as Array<{ cabinet: string }> | null ?? []).forEach((r) => {
-            if (r.cabinet && getCorpus(r.cabinet.trim()) === specialCorpus) {
-              set.add(r.cabinet.trim());
-            }
+            const c = r.cabinet?.trim();
+            if (c && EXTRA_CABINET_RE.test(c) && !covered.has(c)) set.add(c);
           });
         }
-        setSpecialCabinets(Array.from(set).sort(cabinetSort));
-        setSpecialError(Boolean(error));
-        setSpecialLoading(false);
+        // Гарантия непустой сетки даже при ошибке запроса.
+        EXTRA_STATIC_CABINETS.forEach((c) => {
+          if (!covered.has(c)) set.add(c);
+        });
+        setExtraCabinets(Array.from(set).sort(cabinetSort));
+        setExtraError(Boolean(error));
+        setExtraLoading(false);
       });
-  }, [specialCorpus]);
+  }, [corpus, objects]);
 
-  // Фактический кабинет в расписании для выбранной кнопки.
-  const activeCabinet = specialCorpus
-    ? selectedCabinet
-    : selected
-      ? CABINET_OVERRIDE[selected.name] ?? selected.room
-      : null;
+  // Фактический кабинет в расписании: выбранный кликом или объект карты.
+  const activeCabinet =
+    selectedCabinet ??
+    (selected ? CABINET_OVERRIDE[selected.name] ?? selected.room : null);
 
   // Занятия в кабинете на выбранную дату: точная дата → недельный шаблон.
   useEffect(() => {
@@ -242,9 +235,6 @@ export default function MapExplorer({
     return Array.from(set);
   }, [floorObjects]);
 
-  const specialSlug =
-    SPECIAL_TABS.find((t) => t.label === specialCorpus)?.slug ?? 'жд';
-
   const panel = (
     <aside className="card self-start p-4 lg:sticky lg:top-20">
       {!activeCabinet ? (
@@ -255,9 +245,9 @@ export default function MapExplorer({
       ) : (
         <div>
           <h2 className="text-lg font-bold text-slate-900">
-            {specialCorpus ? activeCabinet : selected?.name ?? activeCabinet}
+            {selected?.name ?? activeCabinet}
           </h2>
-          {!specialCorpus && selected && (
+          {selected && (
             <>
               <span className="badge mt-1.5 bg-slate-100 text-slate-700">
                 {CATEGORY_LABELS[selected.category] ?? selected.category}
@@ -284,7 +274,7 @@ export default function MapExplorer({
             <input
               type="hidden"
               name="corpus"
-              value={specialCorpus ? specialSlug : String(corpus)}
+              value={String(corpus)}
             />
             <input type="hidden" name="cabinet" value={activeCabinet} />
             <label htmlFor="cabinet-date" className="label">
@@ -355,66 +345,16 @@ export default function MapExplorer({
               href={`/map?corpus=${c}`}
               className={cn(
                 'btn',
-                !specialCorpus && c === corpus ? 'btn-primary' : 'btn-outline'
+                c === corpus ? 'btn-primary' : 'btn-outline'
               )}
             >
               Корпус {c}
             </a>
           ))}
-          {SPECIAL_TABS.map((t) => (
-            <a
-              key={t.slug}
-              href={`/map?corpus=${t.slug}`}
-              className={cn(
-                'btn',
-                specialCorpus === t.label ? 'btn-primary' : 'btn-outline'
-              )}
-            >
-              {t.label}
-            </a>
-          ))}
         </div>
       </div>
 
-      {specialCorpus ? (
-        // «Виртуальный» корпус: схемы этажей нет — сетка кабинетов из расписания.
-        <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
-          <div className="card p-4">
-            <h2 className="text-lg font-bold text-slate-900">Корпус {specialCorpus}</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Кабинеты, встречающиеся в расписании.
-            </p>
-            {specialLoading && (
-              <p className="mt-3 text-sm text-slate-500">Загружаем…</p>
-            )}
-            {specialError && !specialLoading && (
-              <p className="mt-3 text-xs text-amber-600">
-                Не удалось обновить список из расписания — показан базовый
-                список кабинетов.
-              </p>
-            )}
-            {!specialLoading && specialCabinets.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {specialCabinets.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setSelectedCabinet(c)}
-                    className={cn(
-                      'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
-                      CATEGORY_STYLES['аудитория'] ?? CATEGORY_FALLBACK,
-                      c === selectedCabinet && 'ring-2 ring-indigo-500'
-                    )}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {panel}
-        </div>
-      ) : sortedFloors.length === 0 ? (
+      {sortedFloors.length === 0 ? (
         <p className="card p-6 text-center text-sm text-slate-500">
           Для этого корпуса этажи пока не добавлены.
         </p>
@@ -504,7 +444,45 @@ export default function MapExplorer({
                   ))}
                 </div>
               )}
-            </div>
+            {/* Кабинеты из расписания, не отмеченные на схеме (жд*, с/з, а/з) */}
+            {corpus === 2 && (extraCabinets.length > 0 || extraLoading) && (
+              <div className="card p-4">
+                <h3 className="text-sm font-bold text-slate-900">
+                  Кабинеты из расписания
+                </h3>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  ЖД-корпус, спортзал и актовый зал — схемы нет, но занятия есть.
+                </p>
+                {extraLoading && (
+                  <p className="mt-3 text-sm text-slate-500">Загружаем…</p>
+                )}
+                {extraError && !extraLoading && (
+                  <p className="mt-3 text-xs text-amber-600">
+                    Не удалось обновить список из расписания — показан базовый
+                    список кабинетов.
+                  </p>
+                )}
+                {!extraLoading && extraCabinets.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {extraCabinets.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setSelectedCabinet(c)}
+                        className={cn(
+                          'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+                          CATEGORY_STYLES['аудитория'] ?? CATEGORY_FALLBACK,
+                          c === selectedCabinet && 'ring-2 ring-indigo-500'
+                        )}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
             {/* Боковая панель кабинета */}
             {panel}
