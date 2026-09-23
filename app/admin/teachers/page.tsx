@@ -8,7 +8,7 @@ import type { Teacher, TeacherEdit } from '@/lib/types';
 
 const STATUS_BADGE: Record<Teacher['status'], string> = {
   published: 'bg-emerald-100 text-emerald-700',
-  hidden: 'bg-slate-200 text-slate-600',
+  hidden: 'bg-slate-200 dark:bg-slate-700 text-[var(--text-muted)]',
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -235,7 +235,7 @@ export default function AdminTeachersPage() {
 
       <form onSubmit={handleSave} className="card p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-extrabold text-slate-900">
+          <h1 className="text-2xl font-extrabold text-[var(--text)]">
             {editingId === null ? 'Новый преподаватель' : 'Редактирование преподавателя'}
           </h1>
           {editingId !== null && (
@@ -371,31 +371,31 @@ export default function AdminTeachersPage() {
 
       {/* Правки от пользователей */}
       <div className="card p-4 sm:p-5">
-        <h2 className="text-lg font-bold text-slate-900">
+        <h2 className="text-lg font-bold text-[var(--text)]">
           Правки от пользователей{' '}
           {edits.length > 0 && (
             <span className="badge ml-1 bg-amber-100 text-amber-700">{edits.length}</span>
           )}
         </h2>
 
-        {loading && <p className="mt-3 text-sm text-slate-500">Загружаем…</p>}
+        {loading && <p className="mt-3 text-sm text-[var(--text-muted)]">Загружаем…</p>}
         {!loading && edits.length === 0 && (
-          <p className="mt-3 text-sm text-slate-500">Новых правок нет.</p>
+          <p className="mt-3 text-sm text-[var(--text-muted)]">Новых правок нет.</p>
         )}
 
         <div className="mt-3 space-y-3">
           {edits.map((ed) => (
-            <div key={ed.id} className="rounded-xl border border-slate-200 p-3">
+            <div key={ed.id} className="rounded-xl border border-slate-200 dark:border-slate-700 p-3">
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="font-bold text-slate-900">
+                <span className="font-bold text-[var(--text)]">
                   {teacherNameById.get(ed.teacher_id) ?? `ID ${ed.teacher_id}`}
                 </span>
                 <span className="badge bg-indigo-50 text-indigo-700">
                   {FIELD_LABELS[ed.field] ?? ed.field}
                 </span>
-                <span className="text-xs text-slate-500">{formatDate(ed.created_at)}</span>
+                <span className="text-xs text-[var(--text-muted)]">{formatDate(ed.created_at)}</span>
               </div>
-              <p className="mt-1.5 text-sm text-slate-700">
+              <p className="mt-1.5 text-sm text-[var(--text)]">
                 {ed.field === 'photo' ? (
                   // Превью предложенного фото (120px) — файл лежит в teachers/pending/.
                   <span className="flex items-center gap-3">
@@ -409,20 +409,20 @@ export default function AdminTeachersPage() {
                       height={120}
                       className="h-[120px] w-[120px] rounded-full object-cover"
                     />
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-[var(--text-muted)]">
                       Предложено новое фото ({ed.new_value})
                     </span>
                   </span>
                 ) : (
                   <>
-                    <span className="text-slate-500 line-through">{ed.old_value || '—'}</span>
+                    <span className="text-[var(--text-muted)] line-through">{ed.old_value || '—'}</span>
                     {' → '}
                     <span className="font-medium">{ed.new_value}</span>
                   </>
                 )}
               </p>
               {ed.comment && (
-                <p className="mt-1 text-xs text-slate-500">Комментарий: {ed.comment}</p>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">Комментарий: {ed.comment}</p>
               )}
               <div className="mt-2 flex gap-2">
                 <button
@@ -447,7 +447,7 @@ export default function AdminTeachersPage() {
 
       {/* Список преподавателей */}
       <div className="card p-4 sm:p-5">
-        <h2 className="text-lg font-bold text-slate-900">
+        <h2 className="text-lg font-bold text-[var(--text)]">
           Все преподаватели{' '}
           {teachers.length > 0 && (
             <span className="text-slate-400">({teachers.length})</span>
@@ -456,23 +456,23 @@ export default function AdminTeachersPage() {
 
         {listError && <p className="mt-3 text-sm text-rose-600">{listError}</p>}
         {!loading && teachers.length === 0 && !listError && (
-          <p className="mt-3 text-sm text-slate-500">Список пуст.</p>
+          <p className="mt-3 text-sm text-[var(--text-muted)]">Список пуст.</p>
         )}
 
         <div className="mt-3 space-y-2">
           {teachers.map((t) => (
             <div
               key={t.id}
-              className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-3"
+              className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-bold text-slate-900">{t.full_name}</span>
+                  <span className="font-bold text-[var(--text)]">{t.full_name}</span>
                   <span className={`badge ${STATUS_BADGE[t.status]}`}>
                     {t.status === 'published' ? 'Опубликован' : 'Скрыт'}
                   </span>
                 </div>
-                <p className="mt-0.5 truncate text-sm text-slate-600">
+                <p className="mt-0.5 truncate text-sm text-[var(--text-muted)]">
                   {t.subject || '—'} · каб. {t.cabinet || '—'}
                   {t.email ? ` · ${t.email}` : ''}
                 </p>

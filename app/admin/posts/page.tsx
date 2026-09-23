@@ -17,7 +17,7 @@ const TYPES: Array<{ value: Post['type']; label: string }> = [
 const STATUS_LABELS: Record<Post['status'], { label: string; className: string }> = {
   published: { label: 'Опубликовано', className: 'bg-emerald-100 text-emerald-700' },
   pending: { label: 'На проверке', className: 'bg-amber-100 text-amber-700' },
-  hidden: { label: 'Скрыто', className: 'bg-slate-200 text-slate-600' },
+  hidden: { label: 'Скрыто', className: 'bg-slate-200 dark:bg-slate-700 text-[var(--text-muted)]' },
 };
 
 export default function AdminPostsPage() {
@@ -124,7 +124,7 @@ export default function AdminPostsPage() {
       <Breadcrumbs items={[{ label: 'Админ', href: '/admin' }, { label: 'Посты' }]} />
 
       <form onSubmit={handleCreate} className="card p-4 sm:p-5">
-        <h1 className="text-2xl font-extrabold text-slate-900">Новый пост</h1>
+        <h1 className="text-2xl font-extrabold text-[var(--text)]">Новый пост</h1>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-[10rem_1fr]">
           <div>
@@ -203,28 +203,28 @@ export default function AdminPostsPage() {
       </form>
 
       <div className="card p-4 sm:p-5">
-        <h2 className="text-lg font-bold text-slate-900">
+        <h2 className="text-lg font-bold text-[var(--text)]">
           Все посты {posts.length > 0 && <span className="text-slate-400">({posts.length})</span>}
         </h2>
 
-        {loading && <p className="mt-3 text-sm text-slate-500">Загружаем…</p>}
+        {loading && <p className="mt-3 text-sm text-[var(--text-muted)]">Загружаем…</p>}
         {listError && <p className="mt-3 text-sm text-rose-600">{listError}</p>}
         {!loading && !listError && posts.length === 0 && (
-          <p className="mt-3 text-sm text-slate-500">Постов пока нет.</p>
+          <p className="mt-3 text-sm text-[var(--text-muted)]">Постов пока нет.</p>
         )}
 
         <div className="mt-3 space-y-3">
           {posts.map((p) => {
             const st = STATUS_LABELS[p.status] ?? STATUS_LABELS.hidden;
             return (
-              <div key={p.id} className="rounded-xl border border-slate-200 p-3">
+              <div key={p.id} className="rounded-xl border border-slate-200 dark:border-slate-700 p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="badge bg-indigo-50 text-indigo-700">{p.type}</span>
                   <span className={cn('badge', st.className)}>{st.label}</span>
-                  <span className="text-xs text-slate-500">{formatDate(p.created_at)}</span>
+                  <span className="text-xs text-[var(--text-muted)]">{formatDate(p.created_at)}</span>
                 </div>
-                <h3 className="mt-1.5 font-bold text-slate-900">{p.title}</h3>
-                <p className="mt-0.5 line-clamp-2 whitespace-pre-line text-sm text-slate-600">
+                <h3 className="mt-1.5 font-bold text-[var(--text)]">{p.title}</h3>
+                <p className="mt-0.5 line-clamp-2 whitespace-pre-line text-sm text-[var(--text-muted)]">
                   {p.content}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">

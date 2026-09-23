@@ -40,7 +40,7 @@ export default async function TeachersPage({
   return (
     <div className="space-y-4">
       <div className="card p-4 sm:p-5">
-        <h1 className="text-2xl font-extrabold text-slate-900">Преподаватели</h1>
+        <h1 className="text-2xl font-extrabold text-[var(--text)]">Преподаватели</h1>
         <form action="/teachers" method="get" className="mt-4 flex flex-wrap gap-3">
           <input
             type="search"
@@ -89,7 +89,7 @@ export default async function TeachersPage({
       )}
 
       {!error && teachers.length === 0 && (
-        <p className="card p-6 text-center text-sm text-slate-500">
+        <p className="card p-6 text-center text-sm text-[var(--text-muted)]">
           {query
             ? 'Ничего не найдено. Попробуйте изменить запрос.'
             : 'Список пока пуст.'}

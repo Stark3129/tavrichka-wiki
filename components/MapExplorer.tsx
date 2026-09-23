@@ -23,7 +23,7 @@ const CATEGORY_STYLES: Record<string, string> = {
   'администрация': 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100',
   'библиотека': 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100',
 };
-const CATEGORY_FALLBACK = 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100';
+const CATEGORY_FALLBACK = 'bg-slate-50 dark:bg-slate-900 text-[var(--text)] border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800';
 
 const CATEGORY_LABELS: Record<string, string> = {
   'аудитория': 'Аудитории',
@@ -294,34 +294,34 @@ export default function MapExplorer({
   const panel = (
     <aside className="card self-start p-4 lg:sticky lg:top-20">
       {!activeCabinet ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-[var(--text-muted)]">
           Нажмите на кабинет на схеме или в списке, чтобы увидеть подробности
           и занятия.
         </p>
       ) : (
         <div>
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-[var(--text)]">
             {selected?.name ?? activeCabinet}
           </h2>
           {selected && (
             <>
-              <span className="badge mt-1.5 bg-slate-100 text-slate-700">
+              <span className="badge mt-1.5 bg-slate-100 dark:bg-slate-800 text-[var(--text)]">
                 {CATEGORY_LABELS[selected.category] ?? selected.category}
               </span>
               {selected.description && (
-                <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text)]">
                   {selected.description}
                 </p>
               )}
             </>
           )}
 
-          <h3 className="mt-4 border-t border-slate-100 pt-3 text-sm font-bold text-slate-900">
+          <h3 className="mt-4 border-t border-slate-100 dark:border-slate-800 pt-3 text-sm font-bold text-[var(--text)]">
             {selectedDate === today
               ? 'Сегодня здесь'
               : `Занятия на ${formatDate(selectedDate)}`}
           </h3>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-[var(--text-muted)]">
             Занятия в кабинете «{activeCabinet}»
           </p>
 
@@ -349,17 +349,17 @@ export default function MapExplorer({
           </form>
 
           {rowsState === 'loading' && (
-            <p className="mt-2 text-sm text-slate-500">Загружаем…</p>
+            <p className="mt-2 text-sm text-[var(--text-muted)]">Загружаем…</p>
           )}
           {rowsState === 'done' && todayRows.length === 0 && (
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
               На эту дату занятий в этом кабинете нет.
             </p>
           )}
           {rowsState === 'done' && todayRows.length > 0 && (
             <div className="mt-2 space-y-2">
               {todayRows.map((row) => (
-                <div key={row.id} className="rounded-lg bg-slate-50 p-2.5 text-sm">
+                <div key={row.id} className="rounded-lg bg-slate-50 dark:bg-slate-900 p-2.5 text-sm">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="badge bg-indigo-100 text-indigo-700">
                       {row.lesson} пара
@@ -370,13 +370,13 @@ export default function MapExplorer({
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 font-medium text-slate-900">{row.subject}</p>
-                  <p className="text-xs text-slate-600">
+                  <p className="mt-1 font-medium text-[var(--text)]">{row.subject}</p>
+                  <p className="text-xs text-[var(--text-muted)]">
                     {row.group_name}
                     {row.teacher ? ` · ${row.teacher}` : ''}
                   </p>
                   {timeByLesson.get(row.lesson) && (
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-[var(--text-muted)]">
                       {timeByLesson.get(row.lesson)!.start_time.slice(0, 5)}–
                       {timeByLesson.get(row.lesson)!.end_time.slice(0, 5)}
                     </p>
@@ -393,7 +393,7 @@ export default function MapExplorer({
   return (
     <div className="space-y-4">
       <div className="card flex flex-wrap items-center gap-3 p-4 sm:p-5">
-        <h1 className="text-2xl font-extrabold text-slate-900">Карта</h1>
+        <h1 className="text-2xl font-extrabold text-[var(--text)]">Карта</h1>
         <div className="ml-auto flex flex-wrap gap-2">
           {corpusOptions.map((c) => (
             <a
@@ -411,7 +411,7 @@ export default function MapExplorer({
       </div>
 
       {sortedFloors.length === 0 ? (
-        <p className="card p-6 text-center text-sm text-slate-500">
+        <p className="card p-6 text-center text-sm text-[var(--text-muted)]">
           Для этого корпуса этажи пока не добавлены.
         </p>
       ) : (
@@ -445,7 +445,7 @@ export default function MapExplorer({
                     <img
                       src={activeFloor.image_url}
                       alt={`${activeFloor.title} — схема этажа`}
-                      className="w-full rounded-lg border border-slate-100"
+                      className="w-full rounded-lg border border-slate-100 dark:border-slate-800"
                     />
                     <a
                       href={activeFloor.image_url}
@@ -457,14 +457,14 @@ export default function MapExplorer({
                     </a>
                   </>
                 ) : (
-                  <p className="py-8 text-center text-sm text-slate-500">
+                  <p className="py-8 text-center text-sm text-[var(--text-muted)]">
                     Схема этажа пока не загружена.
                   </p>
                 )}
               </div>
 
               {categories.length > 0 && (
-                <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+                <div className="flex flex-wrap gap-3 text-xs text-[var(--text-muted)]">
                   {categories.map((c) => (
                     <span key={c} className="inline-flex items-center gap-1.5">
                       <span
@@ -479,7 +479,7 @@ export default function MapExplorer({
               )}
 
               {floorObjects.length === 0 ? (
-                <p className="card p-6 text-center text-sm text-slate-500">
+                <p className="card p-6 text-center text-sm text-[var(--text-muted)]">
                   На этом этаже пока нет отмеченных кабинетов.
                 </p>
               ) : (
@@ -505,14 +505,14 @@ export default function MapExplorer({
             {/* Кабинеты из расписания, не отмеченные на схеме (жд*, с/з, а/з) */}
             {corpus === 2 && (extraCabinets.length > 0 || extraLoading) && (
               <div className="card p-4">
-                <h3 className="text-sm font-bold text-slate-900">
+                <h3 className="text-sm font-bold text-[var(--text)]">
                   Кабинеты из расписания
                 </h3>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="mt-0.5 text-xs text-[var(--text-muted)]">
                   ЖД-корпус, спортзал и актовый зал — схемы нет, но занятия есть.
                 </p>
                 {extraLoading && (
-                  <p className="mt-3 text-sm text-slate-500">Загружаем…</p>
+                  <p className="mt-3 text-sm text-[var(--text-muted)]">Загружаем…</p>
                 )}
                 {extraError && !extraLoading && (
                   <p className="mt-3 text-xs text-amber-600">

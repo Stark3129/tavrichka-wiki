@@ -19,7 +19,7 @@ const TYPE_META: Record<
 export default function PostCard({ post }: { post: Post }) {
   const meta = TYPE_META[post.type] ?? {
     label: post.type,
-    className: 'bg-slate-100 text-slate-700',
+    className: 'bg-slate-100 dark:bg-slate-800 text-[var(--text)]',
     Icon: Newspaper,
   };
 

@@ -95,7 +95,7 @@ export default async function SchedulePage({
     <div className="space-y-4">
       <div className="card p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-extrabold text-slate-900">Расписание</h1>
+          <h1 className="text-2xl font-extrabold text-[var(--text)]">Расписание</h1>
           {group && (
             <span className="ml-auto text-xs text-[var(--text-muted)]">
               {formatDate(selectedDate)} · {dayLabel}
@@ -168,11 +168,11 @@ export default async function SchedulePage({
       </div>
 
       {!group ? (
-        <p className="card p-6 text-center text-sm text-slate-500">
+        <p className="card p-6 text-center text-sm text-[var(--text-muted)]">
           Выберите группу, чтобы посмотреть расписание.
         </p>
       ) : rows.length === 0 ? (
-        <p className="card p-6 text-center text-sm text-slate-500">
+        <p className="card p-6 text-center text-sm text-[var(--text-muted)]">
           На выбранную дату занятий нет.
         </p>
       ) : (

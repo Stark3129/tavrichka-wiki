@@ -85,8 +85,8 @@ export default function Header() {
           Тавричка&nbsp;Вики
         </Link>
 
-        {/* Десктопное меню */}
-        <nav className="hidden flex-wrap items-center gap-1 text-sm font-medium sm:flex">
+        {/* Полная навигация — только на lg+ (одна строка) */}
+        <nav className="hidden items-center gap-2 text-sm font-medium lg:flex">
           {NAV.map((item) => {
             const active =
               item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
@@ -95,7 +95,7 @@ export default function Header() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'rounded-lg px-3 py-1.5 transition-colors',
+                  'whitespace-nowrap rounded-lg px-3 py-1.5 transition-colors',
                   active
                     ? 'bg-white/20 text-white'
                     : 'text-white/90 hover:bg-white/10 hover:text-white'
@@ -109,7 +109,7 @@ export default function Header() {
           {isAdmin && (
             <Link
               href="/admin"
-              className="rounded-lg px-3 py-1.5 font-semibold text-amber-200 transition-colors hover:bg-white/10 hover:text-amber-100"
+              className="rounded-lg px-3 py-1.5 font-semibold whitespace-nowrap text-amber-200 transition-colors hover:bg-white/10 hover:text-amber-100"
             >
               Админ
             </Link>
@@ -119,13 +119,13 @@ export default function Header() {
 
         {/* Правая часть: бургер (мобильные), Выход/Вход, поиск, тема */}
         <div className="flex items-center gap-2">
-          {/* Кнопка-бургер для мобильных (<640px) */}
+          {/* Кнопка-бургер — видна на md и мобильных (<lg) */}
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             aria-expanded={menuOpen}
             aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
-            className="btn !px-2.5 !rounded-lg !border-white/30 !bg-white/10 !text-white sm:hidden"
+            className="btn !px-2.5 !rounded-lg !border-white/30 !bg-white/10 !text-white lg:hidden"
           >
             {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
@@ -169,7 +169,7 @@ export default function Header() {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="overflow-hidden border-t border-white/20 sm:hidden"
+            className="overflow-hidden border-t border-white/20 lg:hidden"
           >
             <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3 text-sm font-medium">
               {NAV.map((item) => {

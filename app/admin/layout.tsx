@@ -44,7 +44,7 @@ export default async function AdminLayout({
           <Link
             key={item.href}
             href={item.href}
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--text-muted)] transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-[var(--text)]"
           >
             {item.label}
             {item.href === '/admin/suggestions' && (pendingSuggestions ?? 0) > 0 && (

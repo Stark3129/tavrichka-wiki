@@ -134,18 +134,18 @@ export default async function TeacherPage({
               </span>
             )}
             <div className="min-w-0">
-              <h1 className="text-2xl font-extrabold text-slate-900">{teacher.full_name}</h1>
+              <h1 className="text-2xl font-extrabold text-[var(--text)]">{teacher.full_name}</h1>
               <span className="badge mt-2 bg-indigo-50 text-indigo-700">{teacher.subject}</span>
             </div>
           </div>
 
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex gap-2">
-              <dt className="w-32 shrink-0 font-medium text-slate-500">Кабинет</dt>
-              <dd className="text-slate-900">{teacher.cabinet || '—'}</dd>
+              <dt className="w-32 shrink-0 font-medium text-[var(--text-muted)]">Кабинет</dt>
+              <dd className="text-[var(--text)]">{teacher.cabinet || '—'}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="w-32 shrink-0 font-medium text-slate-500">Почта</dt>
+              <dt className="w-32 shrink-0 font-medium text-[var(--text-muted)]">Почта</dt>
               <dd>
                 {teacher.email ? (
                   <a
@@ -160,13 +160,13 @@ export default async function TeacherPage({
               </dd>
             </div>
             <div className="flex gap-2">
-              <dt className="w-32 shrink-0 font-medium text-slate-500">Консультации</dt>
-              <dd className="text-slate-900">{teacher.consultation || '—'}</dd>
+              <dt className="w-32 shrink-0 font-medium text-[var(--text-muted)]">Консультации</dt>
+              <dd className="text-[var(--text)]">{teacher.consultation || '—'}</dd>
             </div>
           </dl>
 
           {teacher.description && (
-            <p className="mt-4 whitespace-pre-line border-t border-slate-100 pt-4 text-sm leading-relaxed text-slate-700">
+            <p className="mt-4 whitespace-pre-line border-t border-slate-100 dark:border-slate-800 pt-4 text-sm leading-relaxed text-[var(--text)]">
               {teacher.description}
             </p>
           )}
@@ -174,12 +174,12 @@ export default async function TeacherPage({
 
         {/* Занятия по кабинетам на выбранную дату */}
         <aside className="card self-start p-4">
-          <h2 className="text-base font-bold text-slate-900">
+          <h2 className="text-base font-bold text-[var(--text)]">
             {isToday
               ? 'Сегодня по кабинетам'
               : `Занятия по кабинетам на ${formatDate(selectedDate)}`}
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500">{formatDate(selectedDate)}</p>
+          <p className="mt-0.5 text-xs text-[var(--text-muted)]">{formatDate(selectedDate)}</p>
 
           {/* GET-форма выбора даты — работает без клиентского JS */}
           <form action={`/teachers/${numericId}`} method="get" className="mt-2">
@@ -201,21 +201,21 @@ export default async function TeacherPage({
           <div className="mt-3 space-y-2">
             {todayRows.length > 0 ? (
               todayRows.map((row) => (
-                <div key={row.id} className="rounded-lg bg-slate-50 p-2.5 text-sm">
+                <div key={row.id} className="rounded-lg bg-slate-50 dark:bg-slate-900 p-2.5 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="badge bg-indigo-100 text-indigo-700">
                       {row.lesson} пара
                     </span>
-                    <span className="font-medium text-slate-900">{row.subject}</span>
+                    <span className="font-medium text-[var(--text)]">{row.subject}</span>
                   </div>
-                  <p className="mt-1 text-xs text-slate-600">
+                  <p className="mt-1 text-xs text-[var(--text-muted)]">
                     {row.group_name}
                     {row.cabinet ? ` · каб. ${row.cabinet}` : ''}
                   </p>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-[var(--text-muted)]">
                 {surname
                   ? 'На эту дату занятий по расписанию нет.'
                   : 'Не удалось определить фамилию для поиска.'}

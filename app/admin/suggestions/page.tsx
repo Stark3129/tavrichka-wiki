@@ -51,12 +51,12 @@ export default async function AdminSuggestionsPage() {
     <div className="space-y-4">
       <Breadcrumbs items={[{ label: 'Админ', href: '/admin' }, { label: 'Предложки' }]} />
 
-      <h1 className="text-2xl font-extrabold text-slate-900">
+      <h1 className="text-2xl font-extrabold text-[var(--text)]">
         Предложки{pending.length > 0 ? ` (${pending.length})` : ''}
       </h1>
 
       {pending.length === 0 ? (
-        <p className="card p-6 text-center text-sm text-slate-500">
+        <p className="card p-6 text-center text-sm text-[var(--text-muted)]">
           Новых предложений нет.
         </p>
       ) : (
@@ -65,14 +65,14 @@ export default async function AdminSuggestionsPage() {
             <div key={s.id} className="card p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span
-                  className={`badge ${TYPE_BADGES[s.type] ?? 'bg-slate-100 text-slate-700'}`}
+                  className={`badge ${TYPE_BADGES[s.type] ?? 'bg-slate-100 dark:bg-slate-800 text-[var(--text)]'}`}
                 >
                   {s.type}
                 </span>
-                <h2 className="font-bold text-slate-900">{s.title}</h2>
+                <h2 className="font-bold text-[var(--text)]">{s.title}</h2>
               </div>
-              <p className="mt-2 whitespace-pre-line text-sm text-slate-700">{s.content}</p>
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 whitespace-pre-line text-sm text-[var(--text)]">{s.content}</p>
+              <p className="mt-2 text-xs text-[var(--text-muted)]">
                 {s.author_name || 'Анонимно'} · {formatDate(s.created_at)}
               </p>
               <div className="mt-3">
@@ -89,21 +89,21 @@ export default async function AdminSuggestionsPage() {
       )}
 
       <details className="card p-4">
-        <summary className="cursor-pointer text-sm font-bold text-slate-900">
+        <summary className="cursor-pointer text-sm font-bold text-[var(--text)]">
           Обработанные (последние 20) — {processed.length}
         </summary>
         {processed.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">Пока ничего не обработано.</p>
+          <p className="mt-3 text-sm text-[var(--text-muted)]">Пока ничего не обработано.</p>
         ) : (
           <ul className="mt-3 space-y-2 text-sm">
             {processed.map((s) => (
-              <li key={s.id} className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-2 last:border-b-0">
+              <li key={s.id} className="flex flex-wrap items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 last:border-b-0">
                 <span
-                  className={`badge ${TYPE_BADGES[s.type] ?? 'bg-slate-100 text-slate-700'}`}
+                  className={`badge ${TYPE_BADGES[s.type] ?? 'bg-slate-100 dark:bg-slate-800 text-[var(--text)]'}`}
                 >
                   {s.type}
                 </span>
-                <span className="font-medium text-slate-900">{s.title}</span>
+                <span className="font-medium text-[var(--text)]">{s.title}</span>
                 <span
                   className={
                     s.status === 'approved' ? 'text-xs text-emerald-600' : 'text-xs text-rose-600'

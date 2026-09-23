@@ -39,8 +39,8 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-sm pt-10">
       <div className="card p-6">
-        <h1 className="text-xl font-extrabold text-slate-900">Вход</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl font-extrabold text-[var(--text)]">Вход</h1>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">
           Войдите, чтобы предлагать правки преподавателям и следить за заменами.
         </p>
 

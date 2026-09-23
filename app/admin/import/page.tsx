@@ -264,8 +264,8 @@ export default function AdminImportPage() {
       <Breadcrumbs items={[{ label: 'Админ', href: '/admin' }, { label: 'Импорт расписания' }]} />
 
       <div className="card p-4 sm:p-5">
-        <h1 className="text-2xl font-extrabold text-slate-900">Импорт расписания</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-2xl font-extrabold text-[var(--text)]">Импорт расписания</h1>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">
           Загрузите матрицу расписания в .xlsx. Сначала разберите файл и проверьте
           предпросмотр, затем публикуйте.
         </p>
@@ -409,19 +409,19 @@ export default function AdminImportPage() {
 
       {items.length > 0 && (
         <div className="card p-4 sm:p-5">
-          <h2 className="text-lg font-bold text-slate-900">Предпросмотр</h2>
+          <h2 className="text-lg font-bold text-[var(--text)]">Предпросмотр</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg bg-slate-50 p-3 text-center">
+            <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 text-center">
               <p className="text-2xl font-extrabold text-indigo-600">{items.length}</p>
-              <p className="text-xs text-slate-500">распознанных строк</p>
+              <p className="text-xs text-[var(--text-muted)]">распознанных строк</p>
             </div>
-            <div className="rounded-lg bg-slate-50 p-3 text-center">
+            <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 text-center">
               <p className="text-2xl font-extrabold text-amber-600">{errors.length}</p>
-              <p className="text-xs text-slate-500">ошибок разбора</p>
+              <p className="text-xs text-[var(--text-muted)]">ошибок разбора</p>
             </div>
-            <div className="rounded-lg bg-slate-50 p-3 text-center">
+            <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 text-center">
               <p className="text-2xl font-extrabold text-rose-600">{conflicts.length}</p>
-              <p className="text-xs text-slate-500">конфликтов значений</p>
+              <p className="text-xs text-[var(--text-muted)]">конфликтов значений</p>
             </div>
           </div>
 
@@ -430,12 +430,12 @@ export default function AdminImportPage() {
               <h3 className="text-sm font-bold text-indigo-700">
                 Новые преподаватели (будут добавлены): {newTeachers.length}
               </h3>
-              <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-sm text-slate-700">
+              <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-sm text-[var(--text)]">
                 {newTeachers.map((t) => (
                   <li key={t.full_name}>
                     {t.full_name}
                     {t.subjects.length > 0 && (
-                      <span className="text-slate-500"> — {t.subjects.join(', ')}</span>
+                      <span className="text-[var(--text-muted)]"> — {t.subjects.join(', ')}</span>
                     )}
                   </li>
                 ))}
@@ -445,18 +445,18 @@ export default function AdminImportPage() {
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">
+              <h3 className="text-sm font-bold text-[var(--text)]">
                 Группы ({groups.length})
               </h3>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-[var(--text-muted)]">
                 {groups.length ? groups.join(', ') : '—'}
               </p>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">
+              <h3 className="text-sm font-bold text-[var(--text)]">
                 Преподаватели ({teachers.length})
               </h3>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-[var(--text-muted)]">
                 {teachers.length ? teachers.join(', ') : '—'}
               </p>
             </div>
@@ -465,12 +465,12 @@ export default function AdminImportPage() {
           {conflicts.length > 0 && (
             <div className="mt-4">
               <h3 className="text-sm font-bold text-rose-700">Конфликты</h3>
-              <ul className="mt-1.5 list-inside list-disc space-y-1 text-sm text-slate-700">
+              <ul className="mt-1.5 list-inside list-disc space-y-1 text-sm text-[var(--text)]">
                 {conflicts.map((c, i) => (
                   <li key={i}>{c}</li>
                 ))}
               </ul>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-[var(--text-muted)]">
                 Строки с конфликтами не публикуются — разрешите их в исходном файле.
               </p>
             </div>
@@ -479,24 +479,24 @@ export default function AdminImportPage() {
           {errors.length > 0 && (
             <div className="mt-4">
               <h3 className="text-sm font-bold text-amber-700">Ошибки разбора</h3>
-              <ul className="mt-1.5 list-inside list-disc space-y-1 text-sm text-slate-700">
+              <ul className="mt-1.5 list-inside list-disc space-y-1 text-sm text-[var(--text)]">
                 {errors.map((e, i) => (
                   <li key={i}>{e}</li>
                 ))}
               </ul>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-[var(--text-muted)]">
                 Ошибочные строки пропущены и не будут опубликованы.
               </p>
             </div>
           )}
 
-          <h3 className="mt-4 text-sm font-bold text-slate-900">
+          <h3 className="mt-4 text-sm font-bold text-[var(--text)]">
             Примеры распознанных строк
           </h3>
           <div className="mt-1.5 overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-slate-200 dark:border-slate-700 text-left text-xs uppercase tracking-wide text-[var(--text-muted)]">
                   <th className="px-2 py-1.5">День</th>
                   <th className="px-2 py-1.5">Пара</th>
                   <th className="px-2 py-1.5">Группа</th>
@@ -507,7 +507,7 @@ export default function AdminImportPage() {
               </thead>
               <tbody>
                 {items.slice(0, 15).map((it, i) => (
-                  <tr key={i} className="border-b border-slate-100">
+                  <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
                     <td className="px-2 py-1.5">{it.day_week}</td>
                     <td className="px-2 py-1.5">{it.lesson}</td>
                     <td className="px-2 py-1.5">{it.group_name}</td>
@@ -520,7 +520,7 @@ export default function AdminImportPage() {
             </table>
           </div>
           {items.length > 15 && (
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
               Показаны первые 15 из {items.length} строк — публикуются все.
             </p>
           )}

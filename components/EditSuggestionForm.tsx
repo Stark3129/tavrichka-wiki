@@ -102,12 +102,12 @@ export default function EditSuggestionForm({ teacher }: { teacher: Teacher }) {
   }
 
   if (authState === 'loading') {
-    return <p className="text-sm text-slate-500">Проверяем вход…</p>;
+    return <p className="text-sm text-[var(--text-muted)]">Проверяем вход…</p>;
   }
 
   if (authState === 'anon') {
     return (
-      <div className="card p-4 text-sm text-slate-600">
+      <div className="card p-4 text-sm text-[var(--text-muted)]">
         Форма «Предложить правку» доступна только авторизованным пользователям.{' '}
         <Link href="/login" className="font-medium text-indigo-600 hover:underline">
           Войти
@@ -118,8 +118,8 @@ export default function EditSuggestionForm({ teacher }: { teacher: Teacher }) {
 
   return (
     <form onSubmit={handleSubmit} className="card p-4 sm:p-5">
-      <h2 className="text-lg font-bold text-slate-900">Предложить правку</h2>
-      <p className="mt-1 text-sm text-slate-500">
+      <h2 className="text-lg font-bold text-[var(--text)]">Предложить правку</h2>
+      <p className="mt-1 text-sm text-[var(--text-muted)]">
         Правка попадёт на проверку модератору и появится после одобрения.
       </p>
 
@@ -170,7 +170,7 @@ export default function EditSuggestionForm({ teacher }: { teacher: Teacher }) {
             className="input"
           />
           {teacher.photo_url && (
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
               Текущее фото уже установлено — новое заменит его после одобрения.
             </p>
           )}

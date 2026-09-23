@@ -191,7 +191,7 @@ export default function AdminMapPage() {
       {/* Форма объекта карты */}
       <form onSubmit={saveObject} className="card p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-extrabold text-slate-900">
+          <h1 className="text-2xl font-extrabold text-[var(--text)]">
             {objEditingId === null ? 'Новый объект карты' : 'Редактирование объекта'}
           </h1>
           {objEditingId !== null && (
@@ -307,7 +307,7 @@ export default function AdminMapPage() {
       {/* Форма этажа */}
       <form onSubmit={saveFloor} className="card p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-xl font-bold text-slate-900">
+          <h2 className="text-xl font-bold text-[var(--text)]">
             {floorEditingId === null ? 'Новый этаж' : 'Редактирование этажа'}
           </h2>
           {floorEditingId !== null && (
@@ -406,25 +406,25 @@ export default function AdminMapPage() {
 
       {/* Список этажей */}
       <div className="card p-4 sm:p-5">
-        <h2 className="text-lg font-bold text-slate-900">
+        <h2 className="text-lg font-bold text-[var(--text)]">
           Этажи {floors.length > 0 && <span className="text-slate-400">({floors.length})</span>}
         </h2>
-        {loading && <p className="mt-3 text-sm text-slate-500">Загружаем…</p>}
+        {loading && <p className="mt-3 text-sm text-[var(--text-muted)]">Загружаем…</p>}
         {!loading && floors.length === 0 && !listError && (
-          <p className="mt-3 text-sm text-slate-500">Этажи пока не добавлены.</p>
+          <p className="mt-3 text-sm text-[var(--text-muted)]">Этажи пока не добавлены.</p>
         )}
         <div className="mt-3 space-y-2">
           {floors.map((f) => (
             <div
               key={f.id}
-              className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-3"
+              className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3"
             >
               <div className="min-w-0 flex-1">
-                <span className="font-bold text-slate-900">{f.title}</span>
+                <span className="font-bold text-[var(--text)]">{f.title}</span>
                 <span className="badge ml-2 bg-indigo-50 text-indigo-700">
                   корпус {f.corpus}
                 </span>
-                <p className="mt-0.5 truncate text-sm text-slate-500">
+                <p className="mt-0.5 truncate text-sm text-[var(--text-muted)]">
                   этаж {f.floor} · сортировка {f.sort}
                   {f.image_url ? ` · ${f.image_url}` : ' · без схемы'}
                 </p>
@@ -462,25 +462,25 @@ export default function AdminMapPage() {
 
       {/* Список объектов */}
       <div className="card p-4 sm:p-5">
-        <h2 className="text-lg font-bold text-slate-900">
+        <h2 className="text-lg font-bold text-[var(--text)]">
           Объекты карты{' '}
           {objects.length > 0 && <span className="text-slate-400">({objects.length})</span>}
         </h2>
         {!loading && objects.length === 0 && !listError && (
-          <p className="mt-3 text-sm text-slate-500">Объекты пока не добавлены.</p>
+          <p className="mt-3 text-sm text-[var(--text-muted)]">Объекты пока не добавлены.</p>
         )}
         <div className="mt-3 space-y-2">
           {objects.map((o) => (
             <div
               key={o.id}
-              className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-3"
+              className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-bold text-slate-900">{o.name}</span>
-                  <span className="badge bg-slate-100 text-slate-600">{o.category}</span>
+                  <span className="font-bold text-[var(--text)]">{o.name}</span>
+                  <span className="badge bg-slate-100 dark:bg-slate-800 text-[var(--text-muted)]">{o.category}</span>
                 </div>
-                <p className="mt-0.5 truncate text-sm text-slate-500">
+                <p className="mt-0.5 truncate text-sm text-[var(--text-muted)]">
                   корпус {o.corpus} · этаж {o.floor}
                   {o.room ? ` · кабинет «${o.room}»` : ''}
                   {o.description ? ` · ${o.description}` : ''}

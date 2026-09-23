@@ -36,7 +36,7 @@ export default function ReplacementTable({
   return (
     <div className="card p-4 sm:p-5">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-extrabold text-slate-900">Замены</h1>
+        <h1 className="text-2xl font-extrabold text-[var(--text)]">Замены</h1>
         {updatedAt && (
           <span className="ml-auto text-xs text-[var(--text-muted)]">
             Обновлено: {formatDate(updatedAt)}
@@ -90,10 +90,10 @@ export default function ReplacementTable({
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-slate-500">Найдено замен: {filtered.length}</p>
+      <p className="mt-3 text-xs text-[var(--text-muted)]">Найдено замен: {filtered.length}</p>
 
       {filtered.length === 0 ? (
-        <p className="mt-4 rounded-lg bg-slate-50 p-6 text-center text-sm text-slate-500">
+        <p className="mt-4 rounded-lg bg-slate-50 dark:bg-slate-900 p-6 text-center text-sm text-[var(--text-muted)]">
           {rows.length === 0
             ? 'Замены ещё не публиковались.'
             : 'По заданным фильтрам ничего не найдено.'}
@@ -117,7 +117,7 @@ export default function ReplacementTable({
               {filtered.map((r) => (
                 <tr key={r.id} className="border-b border-[var(--border)] hover:bg-[var(--bg)]">
                   <td className="whitespace-nowrap px-2 py-2">{formatDate(r.r_date)}</td>
-                  <td className="px-2 py-2 font-medium text-slate-900">{r.group_name}</td>
+                  <td className="px-2 py-2 font-medium text-[var(--text)]">{r.group_name}</td>
                   <td className="px-2 py-2">{r.lesson}</td>
                   <td className="px-2 py-2">{r.subject}</td>
                   <td className="px-2 py-2">
@@ -125,7 +125,7 @@ export default function ReplacementTable({
                   </td>
                   <td className="px-2 py-2">{r.teacher}</td>
                   <td className="px-2 py-2">{r.cabinet}</td>
-                  <td className="px-2 py-2 text-slate-500">{r.note}</td>
+                  <td className="px-2 py-2 text-[var(--text-muted)]">{r.note}</td>
                 </tr>
               ))}
             </tbody>
