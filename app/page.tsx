@@ -4,6 +4,7 @@ import PostCard from '@/components/PostCard';
 import SuggestionForm from '@/components/SuggestionForm';
 import { cn, formatDate } from '@/lib/utils';
 import type { Post, Replacement } from '@/lib/types';
+import type { Comment } from '@/lib/types';
 
 const TYPES = [
   { value: '', label: 'Все' },
@@ -47,6 +48,21 @@ export default async function HomePage({
     .eq('r_date', todayIso())
     .order('lesson', { ascending: true });
   const replacements = (replacementsData as Replacement[] | null) ?? [];
+
+  // Комментарии ко всем постам ленты (одним запросом, группируем по post_id).
+  const commentsByPost = new Map<number, Comment[]>();
+  if (posts.length > 0) {
+    const { data: commentsData } = await supabase
+      .from('comments')
+      .select('*, profiles(username)')
+      .in('post_id', posts.map((p) => p.id))
+      .order('created_at', { ascending: true });
+    for (const c of (commentsData as Comment[] | null) ?? []) {
+      const list = commentsByPost.get(c.post_id) ?? [];
+      list.push(c);
+      commentsByPost.set(c.post_id, list);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -165,7 +181,11 @@ export default async function HomePage({
 
             <div className="space-y-4">
               {posts.map((post) => (
-                <PostCard key={post.id} post={post} />
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  comments={commentsByPost.get(post.id) ?? []}
+                />
               ))}
             </div>
           </div>

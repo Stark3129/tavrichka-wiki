@@ -3,7 +3,8 @@
 import { motion } from 'framer-motion';
 import { Calendar, Laugh, Lightbulb, Megaphone, Newspaper } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
-import type { Post } from '@/lib/types';
+import type { Comment, Post } from '@/lib/types';
+import Comments from '@/components/Comments';
 
 const TYPE_META: Record<
   Post['type'],
@@ -16,7 +17,13 @@ const TYPE_META: Record<
   event: { label: 'Событие', className: 'bg-rose-100 text-rose-800', Icon: Calendar },
 };
 
-export default function PostCard({ post }: { post: Post }) {
+export default function PostCard({
+  post,
+  comments = [],
+}: {
+  post: Post;
+  comments?: Comment[];
+}) {
   const meta = TYPE_META[post.type] ?? {
     label: post.type,
     className: 'bg-slate-100 dark:bg-slate-800 text-[var(--text)]',
@@ -55,6 +62,10 @@ export default function PostCard({ post }: { post: Post }) {
           className="max-h-96 w-full border-t border-[var(--border)] object-cover"
         />
       )}
+
+      <div className="border-t border-[var(--border)] px-4 pb-4 sm:px-5">
+        <Comments postId={String(post.id)} initialComments={comments} />
+      </div>
     </motion.article>
   );
 }

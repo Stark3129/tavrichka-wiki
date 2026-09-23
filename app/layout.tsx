@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google';
 import Header from '@/components/Header';
 import SearchModal from '@/components/SearchModal';
 import { SearchProvider } from '@/lib/search-context';
+import { createClient } from '@/lib/supabase/server';
+import type { User } from '@supabase/supabase-js';
 import './globals.css';
 
 // Единый шрифт сайта: Inter с поддержкой кириллицы.
@@ -21,11 +23,26 @@ export const metadata: Metadata = {
     'Студенческий портал колледжа: лента постов, замены, расписание, преподаватели и карта корпусов.',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Пользователь и роль получаем на сервере и передаём в Header пропсами.
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  const user: User | null = data?.user ?? null;
+
+  let isAdmin = false;
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    isAdmin = profile?.role === 'admin';
+  }
+
   return (
     <html lang="ru">
       <body
@@ -40,7 +57,7 @@ export default function RootLayout({
         <div className="bg-gradient-blob blob-4" />
         <div className="bg-gradient-blob blob-5" />
         <SearchProvider>
-          <Header />
+          <Header user={user} isAdmin={isAdmin} />
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
             {children}
           </main>

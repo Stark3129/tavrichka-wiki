@@ -12,6 +12,7 @@ const NAV = [
   { href: '/admin/map', label: 'Карта' },
   { href: '/admin/suggestions', label: 'Предложки' },
   { href: '/admin/replacements', label: 'Замены вручную' },
+  { href: '/admin/users', label: 'Пользователи' },
 ];
 
 export default async function AdminLayout({

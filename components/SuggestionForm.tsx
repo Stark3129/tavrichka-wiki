@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { createPost } from '@/lib/actions';
 
 const TYPES = [
   { value: 'news', label: 'Новость' },
@@ -37,6 +38,25 @@ export default function SuggestionForm() {
 
     setBusy(true);
     const supabase = createClient();
+
+    // Авторизованный пользователь -> пост сразу в posts (status 'pending'),
+    // с фильтрацией мата в server action createPost.
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const result = await createPost({ title: title.trim(), content: content.trim(), type });
+      setBusy(false);
+      if (result.ok) {
+        setSent(true);
+        setTitle('');
+        setContent('');
+        setAuthorName('');
+      } else {
+        setError(result.message);
+      }
+      return;
+    }
+
+    // Гость -> классическая предложка в post_suggestions.
     const { error: insErr } = await supabase.from('post_suggestions').insert({
       type,
       title: title.trim(),
@@ -121,7 +141,11 @@ export default function SuggestionForm() {
         </div>
 
         {error && <p className="text-sm text-rose-600">{error}</p>}
-        {sent && <p className="text-sm font-medium text-emerald-600">Отправлено на модерацию!</p>}
+        {sent && (
+          <p className="text-sm font-medium text-emerald-600">
+            Пост отправлен на модерацию!
+          </p>
+        )}
 
         <button type="submit" disabled={busy} className="btn btn-primary">
           {busy ? 'Отправляем…' : 'Отправить'}

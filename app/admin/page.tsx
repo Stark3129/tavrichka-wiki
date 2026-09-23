@@ -21,13 +21,14 @@ const SECTIONS = [
   { href: '/admin/suggestions', label: 'Предложения', emoji: '💡', desc: 'Предложки на модерации' },
   { href: '/admin/map', label: 'Карта', emoji: '🗺️', desc: 'Корпуса, этажи и кабинеты' },
   { href: '/admin/replacements', label: 'Замены вручную', emoji: '🔄', desc: 'Добавление и правка замен по датам' },
+  { href: '/admin/users', label: 'Пользователи', emoji: '👥', desc: 'Управление ролями и доступом' },
 ];
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
   const today = todayIso();
 
-  const [postsRes, replacementsRes, teachersRes, editsRes] = await Promise.all([
+  const [postsRes, replacementsRes, teachersRes, editsRes, profilesRes] = await Promise.all([
     supabase.from('posts').select('*', { count: 'exact', head: true }),
     supabase
       .from('replacements')
@@ -38,6 +39,7 @@ export default async function AdminDashboardPage() {
       .from('teacher_edits')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending'),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }),
   ]);
 
   const stats = [
@@ -65,6 +67,12 @@ export default async function AdminDashboardPage() {
       href: '/admin/suggestions',
       count: editsRes.count,
       accent: true,
+    },
+    {
+      label: 'Пользователи',
+      emoji: '👥',
+      href: '/admin/users',
+      count: profilesRes.count,
     },
   ];
 

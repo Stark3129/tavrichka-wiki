@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, Search, X } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/client';
+import { Menu, Search, X } from 'lucide-react';
+import { logout } from '@/lib/actions';
 import { cn } from '@/lib/utils';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useSearch } from '@/lib/search-context';
@@ -20,55 +20,16 @@ const NAV = [
   { href: '/about', label: 'ℹ️ О проекте' },
 ];
 
-export default function Header() {
+export default function Header({
+  user,
+  isAdmin,
+}: {
+  user: User | null;
+  isAdmin: boolean;
+}) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { setOpen: setSearchOpen } = useSearch();
-
-  useEffect(() => {
-    const supabase = createClient();
-
-    async function loadSession() {
-      const { data } = await supabase.auth.getUser();
-      setUser(data.user ?? null);
-
-      if (data.user) {
-        // Роль берём из таблицы profiles; без записи профиля ссылка «Админ» скрыта.
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .single();
-        setIsAdmin(profile?.role === 'admin');
-      } else {
-        setIsAdmin(false);
-      }
-    }
-
-    loadSession();
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (!session) setIsAdmin(false);
-    });
-
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
-  async function handleLogout() {
-    setBusy(true);
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    setUser(null);
-    setIsAdmin(false);
-    setBusy(false);
-    router.push('/');
-    router.refresh();
-  }
 
   return (
     <header className="sticky top-0 z-30 border-b border-white/10 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 shadow-md md:from-cyan-500/80 md:via-blue-600/80 md:to-indigo-600/80 md:backdrop-blur-xl">
@@ -131,17 +92,22 @@ export default function Header() {
           </button>
 
           {user ? (
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={busy}
-              className="btn !rounded-lg !px-3 !border-white/30 !bg-white/10 !text-white"
-            >
-              {busy ? 'Выходим…' : 'Выход'}
-            </button>
+            <>
+              <span className="hidden max-w-[150px] truncate text-sm text-white/90 md:block">
+                {user.email}
+              </span>
+              <form action={logout}>
+                <button
+                  type="submit"
+                  className="btn !rounded-lg !px-3 !border-white/30 !bg-white/10 !text-white"
+                >
+                  Выход
+                </button>
+              </form>
+            </>
           ) : (
             <Link
-              href="/login"
+              href="/auth"
               className="btn !rounded-lg !px-3 !bg-white !text-indigo-700"
             >
               Вход

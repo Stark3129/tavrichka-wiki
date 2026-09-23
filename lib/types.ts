@@ -87,8 +87,18 @@ export interface MapFloor {
   sort: number;
 }
 
+export interface Comment {
+  id: string;
+  post_id: number;
+  author_id: string;
+  text: string;
+  created_at: string;
+  profiles?: { username: string | null } | null;
+}
+
 export interface LessonTime {
   lesson: number;
   start_time: string;
   end_time: string;
 }
+
