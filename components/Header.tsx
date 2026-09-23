@@ -12,12 +12,12 @@ import ThemeToggle from '@/components/ThemeToggle';
 import { useSearch } from '@/lib/search-context';
 
 const NAV = [
-  { href: '/', label: 'Лента' },
-  { href: '/replacements', label: 'Замены' },
-  { href: '/schedule', label: 'Расписание' },
-  { href: '/teachers', label: 'Преподаватели' },
-  { href: '/map', label: 'Карта' },
-  { href: '/about', label: 'О проекте' },
+  { href: '/', label: '📰 Лента' },
+  { href: '/replacements', label: '🔄 Замены' },
+  { href: '/schedule', label: '📅 Расписание' },
+  { href: '/teachers', label: '👨‍🏫 Преподаватели' },
+  { href: '/map', label: '🗺️ Карта' },
+  { href: '/about', label: 'ℹ️ О проекте' },
 ];
 
 export default function Header() {
@@ -71,13 +71,13 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--bg-card)]/95 backdrop-blur">
+    <header className="sticky top-0 z-30 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 shadow-md md:backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <Link
           href="/"
-          className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-[var(--text)]"
+          className="flex items-center gap-2 text-lg font-bold tracking-tight text-white"
         >
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-600 text-sm font-black text-white">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/20 text-sm font-black text-white">
             ТВ
           </span>
           Тавричка&nbsp;Вики
@@ -95,8 +95,8 @@ export default function Header() {
                 className={cn(
                   'rounded-lg px-3 py-1.5 transition-colors',
                   active
-                    ? 'bg-[var(--accent)] text-white'
-                    : 'text-[var(--text-muted)] hover:bg-[var(--border)] hover:text-[var(--text)]'
+                    ? 'bg-white/20 text-white'
+                    : 'text-white/90 hover:bg-white/10 hover:text-white'
                 )}
               >
                 {item.label}
@@ -107,7 +107,7 @@ export default function Header() {
           {isAdmin && (
             <Link
               href="/admin"
-              className="rounded-lg px-3 py-1.5 font-semibold text-amber-600 transition-colors hover:bg-amber-50"
+              className="rounded-lg px-3 py-1.5 font-semibold text-amber-200 transition-colors hover:bg-white/10 hover:text-amber-100"
             >
               Админ
             </Link>
@@ -120,7 +120,7 @@ export default function Header() {
           onClick={() => setMenuOpen((v) => !v)}
           aria-expanded={menuOpen}
           aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
-          className="btn btn-outline ml-auto !px-2.5 sm:hidden"
+          className="btn ml-auto !px-2.5 !rounded-lg !border-white/30 !bg-white/10 !text-white sm:hidden"
         >
           {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
         </button>
@@ -131,12 +131,15 @@ export default function Header() {
               type="button"
               onClick={handleLogout}
               disabled={busy}
-              className="btn btn-outline"
+              className="btn !rounded-lg !px-3 !border-white/30 !bg-white/10 !text-white"
             >
               {busy ? 'Выходим…' : 'Выход'}
             </button>
           ) : (
-            <Link href="/login" className="btn btn-primary">
+            <Link
+              href="/login"
+              className="btn !rounded-lg !px-3 !bg-white !text-indigo-700"
+            >
               Вход
             </Link>
           )}
@@ -146,7 +149,7 @@ export default function Header() {
             onClick={() => setSearchOpen(true)}
             aria-label="Поиск"
             title="Поиск (Ctrl+K)"
-            className="btn btn-outline !px-2.5"
+            className="btn !px-2.5 !rounded-lg !border-white/30 !bg-white/10 !text-white"
           >
             <Search className="h-4 w-4" />
           </button>
@@ -162,7 +165,7 @@ export default function Header() {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="overflow-hidden border-t border-[var(--border)] sm:hidden"
+            className="overflow-hidden border-t border-white/20 sm:hidden"
           >
             <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3 text-sm font-medium">
               {NAV.map((item) => {
@@ -176,8 +179,8 @@ export default function Header() {
                     className={cn(
                       'rounded-lg px-3 py-2 transition-colors',
                       active
-                        ? 'bg-[var(--accent)] text-white'
-                        : 'text-[var(--text-muted)] hover:bg-[var(--border)] hover:text-[var(--text)]'
+                        ? 'bg-white/20 text-white'
+                        : 'text-white/90 hover:bg-white/10 hover:text-white'
                     )}
                   >
                     {item.label}
@@ -188,7 +191,7 @@ export default function Header() {
                 <Link
                   href="/admin"
                   onClick={() => setMenuOpen(false)}
-                  className="rounded-lg px-3 py-2 font-semibold text-amber-600 hover:bg-amber-50"
+                  className="rounded-lg px-3 py-2 font-semibold text-amber-200 hover:bg-white/10"
                 >
                   Админ
                 </Link>

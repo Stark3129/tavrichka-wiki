@@ -182,11 +182,11 @@ export default async function SchedulePage({
               ? 'Фактическое расписание (замены)'
               : 'Базовое расписание недели'}
           </p>
-          <div className="card overflow-hidden p-0">
+        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] shadow-lg">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--bg)] text-left text-xs uppercase tracking-wide text-[var(--text-muted)]">
+                <tr className="border-b border-[var(--border)] bg-gradient-to-r from-indigo-50 to-purple-50 text-left text-xs uppercase tracking-wide text-[var(--text-muted)] dark:from-indigo-950/50 dark:to-purple-950/50">
                   <th className="px-3 py-2.5">День</th>
                   <th className="px-3 py-2.5">Пара</th>
                   <th className="px-3 py-2.5">Предмет</th>
@@ -196,12 +196,17 @@ export default async function SchedulePage({
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-b border-[var(--border)] hover:bg-[var(--bg)]">
+                  <tr
+                    key={r.id}
+                    className="border-b border-[var(--border)] transition-colors hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30"
+                  >
                     <td className="whitespace-nowrap px-3 py-2.5">
                       {r.day_week || dayLabel}
                     </td>
                     <td className="px-3 py-2.5">
-                      <span className="badge bg-[var(--accent)] text-white">{r.lesson}</span>
+                      <span className="inline-flex items-center rounded-full bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white">
+                        {r.lesson}
+                      </span>
                     </td>
                     <td className="px-3 py-2.5 font-medium text-[var(--text)]">{r.subject}</td>
                     <td className="px-3 py-2.5">{r.teacher}</td>

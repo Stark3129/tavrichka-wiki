@@ -490,8 +490,10 @@ export default function MapExplorer({
                       type="button"
                       onClick={() => setSelectedId(o.id)}
                       className={cn(
-                        'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
-                        CATEGORY_STYLES[o.category] ?? CATEGORY_FALLBACK,
+                        'rounded-xl border px-3 py-1.5 text-sm font-medium transition-all duration-200',
+                        o.id === selectedId
+                          ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg'
+                          : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30',
                         o.id === selectedId && 'ring-2 ring-indigo-500'
                       )}
                     >
@@ -526,8 +528,10 @@ export default function MapExplorer({
                         type="button"
                         onClick={() => setSelectedCabinet(c)}
                         className={cn(
-                          'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
-                          CATEGORY_STYLES['аудитория'] ?? CATEGORY_FALLBACK,
+                          'rounded-xl border px-3 py-1.5 text-sm font-medium transition-all duration-200',
+                          c === selectedCabinet
+                            ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg'
+                            : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30',
                           c === selectedCabinet && 'ring-2 ring-indigo-500'
                         )}
                       >

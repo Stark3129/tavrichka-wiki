@@ -18,9 +18,8 @@ function initials(fullName: string): string {
 export default function TeacherCard({ teacher }: { teacher: Teacher }) {
   return (
     <motion.article
-      className="card min-h-0 overflow-hidden p-4"
-      whileHover={{ y: -2 }}
-      transition={{ type: 'spring', stiffness: 300 }}
+      className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-md transition-all duration-200 hover:shadow-lg md:hover:-translate-y-0.5"
+      whileHover={{ y: 0 }}
     >
       <div className="flex items-center gap-3">
         {teacher.photo_url ? (
@@ -32,15 +31,15 @@ export default function TeacherCard({ teacher }: { teacher: Teacher }) {
             className="h-16 w-16 shrink-0 rounded-full object-cover"
           />
         ) : (
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-lg font-bold text-white">
             {initials(teacher.full_name)}
           </span>
         )}
         <div className="min-w-0">
           <h3 className="text-base font-bold text-[var(--text)]">{teacher.full_name}</h3>
-          <span className="badge mt-1.5 block max-w-full whitespace-normal bg-[var(--accent)] text-left text-white line-clamp-2 break-words">
+          <p className="mt-1 line-clamp-2 break-words text-sm text-[var(--text-muted)]">
             {teacher.subject}
-          </span>
+          </p>
         </div>
       </div>
       <p className="mt-2 text-sm text-[var(--text-muted)]">Кабинет: {teacher.cabinet || '—'}</p>

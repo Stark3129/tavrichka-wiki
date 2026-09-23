@@ -31,6 +31,10 @@ export default function RootLayout({
       <body
         className={`flex min-h-screen flex-col bg-[var(--bg)] text-[var(--text)] ${inter.variable} font-sans`}
       >
+        {/* Живой фон: плавающие градиентные пятна (чистый CSS) */}
+        <div className="bg-gradient-blob blob-1" />
+        <div className="bg-gradient-blob blob-2" />
+        <div className="bg-gradient-blob blob-3" />
         <SearchProvider>
           <Header />
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">

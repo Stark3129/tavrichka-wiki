@@ -6,21 +6,93 @@
    Единый яркий акцент — индиго (indigo-600). */
 
 :root {
-  --bg: #f8fafc; /* slate-50 */
+  --bg: #fafafa;
   --bg-card: #ffffff;
-  --text: #0f172a; /* slate-900 */
-  --text-muted: #64748b; /* slate-500 */
-  --border: #e2e8f0; /* slate-200 */
-  --accent: #4f46e5; /* indigo-600 */
+  --text: #0a0a0a;
+  --text-muted: #737373;
+  --border: #e5e5e5;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --gradient-1: #6366f1;
+  --gradient-2: #a855f7;
+  --gradient-3: #ec4899;
 }
 
 .dark {
-  --bg: #0f172a; /* slate-900 */
-  --bg-card: #1e293b; /* slate-800 */
-  --text: #f1f5f9; /* slate-100 */
-  --text-muted: #94a3b8; /* slate-400 */
-  --border: #334155; /* slate-700 */
-  --accent: #6366f1; /* indigo-500 */
+  --bg: #0a0a0a;
+  --bg-card: #171717;
+  --text: #fafafa;
+  --text-muted: #a3a3a3;
+  --border: #262626;
+  --accent: #818cf8;
+  --accent-hover: #6366f1;
+}
+
+/* Живой фон — плавающие градиентные пятна (лёгкая CSS-анимация) */
+.bg-gradient-blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.4;
+  z-index: -1;
+  animation: float 20s infinite ease-in-out;
+  pointer-events: none;
+}
+
+.blob-1 {
+  width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2));
+  top: -100px;
+  left: -100px;
+  animation-delay: 0s;
+}
+
+.blob-2 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, var(--gradient-2), var(--gradient-3));
+  top: 50%;
+  right: -50px;
+  animation-delay: -5s;
+}
+
+.blob-3 {
+  width: 350px;
+  height: 350px;
+  background: linear-gradient(135deg, var(--gradient-3), var(--gradient-1));
+  bottom: -100px;
+  left: 30%;
+  animation-delay: -10s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+
+/* Отключаем тяжёлые эффекты на мобильных */
+@media (max-width: 768px) {
+  .bg-gradient-blob {
+    filter: blur(40px);
+    opacity: 0.2;
+  }
+  .blob-1, .blob-2, .blob-3 {
+    width: 200px;
+    height: 200px;
+  }
+}
+
+/* Уважаем prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .bg-gradient-blob {
+    animation: none;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 @layer base {
@@ -45,26 +117,29 @@
 
   /* Кнопки: базовый класс + цветовые варианты */
   .btn {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .btn-primary {
-    background-color: var(--accent);
+    background-image: linear-gradient(to right, #6366f1, #9333ea);
     color: #ffffff;
+    @apply shadow-md;
   }
 
   .btn-primary:hover {
-    filter: brightness(0.92);
+    background-image: linear-gradient(to right, #4f46e5, #7e22ce);
+    @apply shadow-lg;
   }
 
   .btn-outline {
     border-color: var(--border);
     background-color: var(--bg-card);
     color: var(--text);
+    @apply border;
   }
 
   .btn-outline:hover {
-    background-color: var(--border);
+    background-color: var(--bg);
   }
 
   /* Формы */
