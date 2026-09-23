@@ -71,7 +71,7 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 shadow-md md:backdrop-blur-md">
+    <header className="sticky top-0 z-30 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 shadow-md md:backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <Link
           href="/"

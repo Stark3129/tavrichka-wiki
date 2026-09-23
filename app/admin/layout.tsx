@@ -11,6 +11,7 @@ const NAV = [
   { href: '/admin/teachers', label: 'Преподаватели' },
   { href: '/admin/map', label: 'Карта' },
   { href: '/admin/suggestions', label: 'Предложки' },
+  { href: '/admin/replacements', label: 'Замены вручную' },
 ];
 
 export default async function AdminLayout({

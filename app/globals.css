@@ -163,13 +163,13 @@
   }
 
   .btn-primary {
-    background-image: linear-gradient(to right, #6366f1, #9333ea);
+    background-image: linear-gradient(135deg, #06b6d4, #3b82f6, #6366f1);
     color: #ffffff;
     @apply shadow-md;
   }
 
   .btn-primary:hover {
-    background-image: linear-gradient(to right, #4f46e5, #7e22ce);
+    background-image: linear-gradient(135deg, #0891b2, #2563eb, #4f46e5);
     @apply shadow-lg;
   }
 

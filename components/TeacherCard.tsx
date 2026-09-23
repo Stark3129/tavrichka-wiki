@@ -31,7 +31,7 @@ export default function TeacherCard({ teacher }: { teacher: Teacher }) {
             className="h-16 w-16 shrink-0 rounded-full object-cover"
           />
         ) : (
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-lg font-bold text-white">
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-lg font-bold text-white">
             {initials(teacher.full_name)}
           </span>
         )}

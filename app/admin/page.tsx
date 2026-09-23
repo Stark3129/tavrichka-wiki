@@ -1,84 +1,135 @@
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 
-type CountSpec = {
-  label: string;
-  table: string;
-  href: string;
-  filter?: { col: string; val: string };
-  accent?: boolean;
-};
+/** Текущая дата по московскому времени в формате ГГГГ-ММ-ДД. */
+function todayIso(): string {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Moscow',
+  }).format(new Date());
+}
 
-const SPECS: CountSpec[] = [
-  { label: 'Замены', table: 'replacements', href: '/replacements' },
-  { label: 'Строки расписания', table: 'schedule_rows', href: '/schedule' },
-  { label: 'Преподаватели', table: 'teachers', href: '/teachers' },
-  { label: 'Посты', table: 'posts', href: '/admin/posts' },
-  { label: 'Объекты карты', table: 'map_objects', href: '/admin/map' },
-  {
-    label: 'Правки на проверке',
-    table: 'teacher_edits',
-    href: '/admin/teachers',
-    filter: { col: 'status', val: 'pending' },
-    accent: true,
-  },
+const ACTIONS = [
+  { href: '/admin/posts', label: 'Добавить пост', emoji: '📰' },
+  { href: '/admin/import', label: 'Импорт замен', emoji: '📥' },
+  { href: '/admin/teachers', label: 'Добавить преподавателя', emoji: '👨‍🏫' },
+];
+
+const SECTIONS = [
+  { href: '/admin/import', label: 'Импорт расписания', emoji: '📥', desc: 'Загрузка матрицы расписания и замен' },
+  { href: '/admin/posts', label: 'Посты', emoji: '📰', desc: 'Новости, мемы, анонсы и события' },
+  { href: '/admin/teachers', label: 'Преподаватели', emoji: '👨‍🏫', desc: 'Справочник и правки от пользователей' },
+  { href: '/admin/suggestions', label: 'Предложения', emoji: '💡', desc: 'Предложки на модерации' },
+  { href: '/admin/map', label: 'Карта', emoji: '🗺️', desc: 'Корпуса, этажи и кабинеты' },
+  { href: '/admin/replacements', label: 'Замены вручную', emoji: '🔄', desc: 'Добавление и правка замен по датам' },
 ];
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
+  const today = todayIso();
 
-  const counts = await Promise.all(
-    SPECS.map(async (spec) => {
-      let q = supabase.from(spec.table).select('*', { count: 'exact', head: true });
-      if (spec.filter) q = q.eq(spec.filter.col, spec.filter.val);
-      const { count, error } = await q;
-      return { spec, count: error ? null : (count ?? 0) };
-    })
-  );
+  const [postsRes, replacementsRes, teachersRes, editsRes] = await Promise.all([
+    supabase.from('posts').select('*', { count: 'exact', head: true }),
+    supabase
+      .from('replacements')
+      .select('*', { count: 'exact', head: true })
+      .eq('r_date', today),
+    supabase.from('teachers').select('*', { count: 'exact', head: true }),
+    supabase
+      .from('teacher_edits')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending'),
+  ]);
+
+  const stats = [
+    {
+      label: 'Посты',
+      emoji: '📰',
+      href: '/admin/posts',
+      count: postsRes.count,
+    },
+    {
+      label: 'Замены сегодня',
+      emoji: '🔄',
+      href: '/admin/import',
+      count: replacementsRes.count,
+    },
+    {
+      label: 'Преподаватели',
+      emoji: '👨‍🏫',
+      href: '/admin/teachers',
+      count: teachersRes.count,
+    },
+    {
+      label: 'Предложения',
+      emoji: '💡',
+      href: '/admin/suggestions',
+      count: editsRes.count,
+      accent: true,
+    },
+  ];
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-extrabold text-slate-900">Дашборд</h1>
+    <div>
+      <h1 className="mb-8 text-3xl font-bold text-[var(--text)]">Панель управления</h1>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {counts.map(({ spec, count }) => (
-          <a
-            key={spec.table + (spec.filter?.val ?? '')}
-            href={spec.href}
-            className="card p-4 transition-shadow hover:shadow-md"
+      {/* Статистика */}
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map((s) => (
+          <Link
+            key={s.label}
+            href={s.href}
+            className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-5 shadow-lg transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
           >
-            <p className="text-sm text-slate-500">{spec.label}</p>
-            <p
-              className={`mt-1 text-3xl font-extrabold ${
-                spec.accent ? 'text-amber-600' : 'text-indigo-600'
-              }`}
-            >
-              {count === null ? '—' : count}
+            <div className="flex items-center justify-between">
+              <span className="text-2xl" aria-hidden>
+                {s.emoji}
+              </span>
+              {s.accent && (s.count ?? 0) > 0 && (
+                <span className="animate-pulse rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
+                  {s.count}
+                </span>
+              )}
+            </div>
+            <p className="mt-3 text-sm text-[var(--text-muted)]">{s.label}</p>
+            <p className="mt-1 text-3xl font-extrabold text-[var(--accent)]">
+              {s.count === null ? '—' : s.count}
             </p>
-            {count === null && (
-              <p className="mt-1 text-xs text-rose-500">Ошибка запроса</p>
-            )}
-          </a>
+          </Link>
         ))}
       </div>
 
-      <div className="card p-4 text-sm text-slate-600">
-        <p className="font-medium text-slate-900">Что дальше</p>
-        <ul className="mt-2 list-inside list-disc space-y-1">
-          <li>
-            Загрузите актуальную матрицу расписания на странице{' '}
-            <a href="/admin/import" className="text-indigo-600 hover:underline">
-              Импорт
-            </a>
-            .
-          </li>
-          <li>
-            Проверьте правки от пользователей в разделе{' '}
-            <a href="/admin/teachers" className="text-indigo-600 hover:underline">
-              Преподаватели
-            </a>
-            .
-          </li>
-        </ul>
+      {/* Быстрые действия */}
+      <h2 className="mb-3 text-lg font-bold text-[var(--text)]">Быстрые действия</h2>
+      <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {ACTIONS.map((a) => (
+          <Link
+            key={a.href + a.label}
+            href={a.href}
+            className="btn btn-primary !w-full"
+          >
+            {a.emoji} {a.label}
+          </Link>
+        ))}
+      </div>
+
+      {/* Разделы админки */}
+      <h2 className="mb-3 text-lg font-bold text-[var(--text)]">Разделы админки</h2>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {SECTIONS.map((s) => (
+          <Link
+            key={s.href}
+            href={s.href}
+            className="flex items-start gap-3 rounded-xl border border-[var(--border)] p-4 transition-all hover:border-cyan-300 hover:bg-cyan-50/50 dark:hover:border-cyan-700 dark:hover:bg-cyan-950/30"
+          >
+            <span className="text-xl" aria-hidden>
+              {s.emoji}
+            </span>
+            <span>
+              <span className="block font-semibold text-[var(--text)]">{s.label}</span>
+              <span className="block text-xs text-[var(--text-muted)]">{s.desc}</span>
+            </span>
+          </Link>
+        ))}
       </div>
     </div>
   );

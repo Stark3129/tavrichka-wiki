@@ -492,9 +492,9 @@ export default function MapExplorer({
                       className={cn(
                         'rounded-xl border px-3 py-1.5 text-sm font-medium transition-all duration-200',
                         o.id === selectedId
-                          ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg'
-                          : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30',
-                        o.id === selectedId && 'ring-2 ring-indigo-500'
+                          ? 'border-blue-600 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
+                          : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-cyan-300 hover:bg-cyan-50 dark:hover:bg-cyan-950/30',
+                        o.id === selectedId && 'ring-2 ring-cyan-500'
                       )}
                     >
                       {o.name}
@@ -530,9 +530,9 @@ export default function MapExplorer({
                         className={cn(
                           'rounded-xl border px-3 py-1.5 text-sm font-medium transition-all duration-200',
                           c === selectedCabinet
-                            ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg'
-                            : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30',
-                          c === selectedCabinet && 'ring-2 ring-indigo-500'
+                            ? 'border-blue-600 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
+                            : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-cyan-300 hover:bg-cyan-50 dark:hover:bg-cyan-950/30',
+                          c === selectedCabinet && 'ring-2 ring-cyan-500'
                         )}
                       >
                         {c}

@@ -186,7 +186,7 @@ export default async function SchedulePage({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
-                <tr className="border-b border-[var(--border)] bg-gradient-to-r from-indigo-50 to-purple-50 text-left text-xs uppercase tracking-wide text-[var(--text-muted)] dark:from-indigo-950/50 dark:to-purple-950/50">
+                <tr className="border-b border-[var(--border)] bg-gradient-to-r from-cyan-50 to-blue-50 text-left text-xs uppercase tracking-wide text-[var(--text-muted)] dark:from-cyan-950/50 dark:to-blue-950/50">
                   <th className="px-3 py-2.5">День</th>
                   <th className="px-3 py-2.5">Пара</th>
                   <th className="px-3 py-2.5">Предмет</th>
@@ -198,13 +198,13 @@ export default async function SchedulePage({
                 {rows.map((r) => (
                   <tr
                     key={r.id}
-                    className="border-b border-[var(--border)] transition-colors hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30"
+                    className="border-b border-[var(--border)] transition-colors hover:bg-cyan-50/50 dark:hover:bg-cyan-950/30"
                   >
                     <td className="whitespace-nowrap px-3 py-2.5">
                       {r.day_week || dayLabel}
                     </td>
                     <td className="px-3 py-2.5">
-                      <span className="inline-flex items-center rounded-full bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white">
+                      <span className="inline-flex items-center rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-2.5 py-1 text-xs font-semibold text-white">
                         {r.lesson}
                       </span>
                     </td>
