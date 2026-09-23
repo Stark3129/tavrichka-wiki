@@ -41,14 +41,24 @@ export default async function SchedulePage({
   const tomorrow = addDaysIso(today, 1);
   const selectedDate = DATE_RE.test(date) ? date : today;
 
-  // Список групп для селекта (уникальные значения из schedule_rows).
-  const { data: groupRows } = await supabase
-    .from('schedule_rows')
-    .select('group_name')
-    .limit(2000);
-  const groups = Array.from(
-    new Set((groupRows ?? []).map((g) => g.group_name as string))
-  ).sort((a, b) => a.localeCompare(b, 'ru'));
+  // Список групп для селекта (уникальные значения из schedule_rows — и шаблона,
+  // и датированных строк с заменами). Supabase отдаёт максимум 1000 строк за
+  // запрос, поэтому читаем постранично, чтобы ни одна группа не потерялась.
+  const groupSet = new Set<string>();
+  const PAGE = 1000;
+  for (let from = 0; from < 20000; from += PAGE) {
+    const { data } = await supabase
+      .from('schedule_rows')
+      .select('group_name')
+      .order('group_name', { ascending: true })
+      .range(from, from + PAGE - 1);
+    const chunk = (data ?? []) as { group_name: string | null }[];
+    for (const g of chunk) {
+      if (g.group_name) groupSet.add(g.group_name.trim());
+    }
+    if (chunk.length < PAGE) break;
+  }
+  const groups = Array.from(groupSet).sort((a, b) => a.localeCompare(b, 'ru'));
 
   let rows: ScheduleRow[] = [];
   let source: 'replacements' | 'template' = 'replacements';
