@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import FeedbackForm from '@/components/FeedbackForm';
 import { Newspaper, CalendarDays, Clock, Map } from 'lucide-react';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
@@ -68,6 +69,15 @@ export default function AboutPage() {
         >
           ← На главную
         </Link>
+      </div>
+
+      {/* Обратная связь */}
+      <div className="mt-12 bg-[var(--bg-card)]/80 backdrop-blur-lg border border-[var(--border)] rounded-2xl shadow-lg p-6">
+        <h2 className="text-2xl font-bold text-[var(--text)] mb-2">Обратная связь</h2>
+        <p className="text-[var(--text-muted)] mb-6">
+          Нашли баг? Есть идея как улучшить сайт? Напишите нам — мы прочитаем каждое сообщение.
+        </p>
+        <FeedbackForm />
       </div>
     </div>
   );

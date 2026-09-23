@@ -11,6 +11,7 @@ const NAV = [
   { href: '/admin/teachers', label: 'Преподаватели', roles: ['admin', 'moderator'] },
   { href: '/admin/map', label: 'Карта', roles: ['admin'] },
   { href: '/admin/suggestions', label: 'Предложки', roles: ['admin', 'moderator'] },
+  { href: '/admin/feedback', label: 'Обратная связь', roles: ['admin', 'moderator'] },
   { href: '/admin/replacements', label: 'Замены вручную', roles: ['admin'] },
   { href: '/admin/users', label: 'Пользователи', roles: ['admin'] },
 ];

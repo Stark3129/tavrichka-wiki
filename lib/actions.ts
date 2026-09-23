@@ -125,6 +125,43 @@ export async function createPost(
   return { ok: true, message: 'Пост отправлен на модерацию' };
 }
 
+/** Проверка роли модератора/админа внутри feedback-действий. */
+async function assertModeratorOrAdmin() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', data?.user?.id ?? '')
+    .single();
+  return !!(profile && ['admin', 'moderator'].includes(profile.role));
+}
+
+/** Смена статуса и заметка админа (форма на /admin/feedback). */
+export async function updateFeedbackStatus(formData: FormData) {
+  if (!(await assertModeratorOrAdmin())) return;
+  const supabase = await createClient();
+  const id = String(formData.get('id') ?? '');
+  const status = String(formData.get('status') ?? 'new');
+  const note = String(formData.get('note') ?? '');
+  if (!id) return;
+  await supabase
+    .from('site_feedback')
+    .update({ status, admin_note: note || null })
+    .eq('id', id);
+  revalidatePath('/admin/feedback');
+}
+
+/** Удаление сообщения обратной связи (форма на /admin/feedback). */
+export async function deleteFeedback(formData: FormData) {
+  if (!(await assertModeratorOrAdmin())) return;
+  const supabase = await createClient();
+  const id = String(formData.get('id') ?? '');
+  if (!id) return;
+  await supabase.from('site_feedback').delete().eq('id', id);
+  revalidatePath('/admin/feedback');
+}
+
 /**
  * Редактирование комментария: автор — свой, админ/модератор — любой.
  * Текст пропускается через фильтр мата перед сохранением.

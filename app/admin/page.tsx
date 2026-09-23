@@ -25,6 +25,8 @@ const SECTIONS = [
 
 const USERS_SECTION = { href: '/admin/users', label: 'Пользователи', emoji: '👥', desc: 'Управление ролями и доступом' };
 
+const FEEDBACK_SECTION = { href: '/admin/feedback', label: 'Обратная связь', emoji: '💬', desc: 'Баги, идеи, предложения' };
+
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
   const today = todayIso();
@@ -42,7 +44,7 @@ export default async function AdminDashboardPage() {
   }
   const isAdminUser = role === 'admin';
 
-  const [postsRes, replacementsRes, teachersRes, editsRes, profilesRes] = await Promise.all([
+  const [postsRes, replacementsRes, teachersRes, editsRes, profilesRes, feedbackRes] = await Promise.all([
     supabase.from('posts').select('*', { count: 'exact', head: true }),
     supabase
       .from('replacements')
@@ -54,6 +56,10 @@ export default async function AdminDashboardPage() {
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending'),
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
+    supabase
+      .from('site_feedback')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'new'),
   ]);
 
   const stats = [
@@ -80,6 +86,13 @@ export default async function AdminDashboardPage() {
       emoji: '💡',
       href: '/admin/suggestions',
       count: editsRes.count,
+      accent: true,
+    },
+    {
+      label: 'Обратная связь',
+      emoji: '💬',
+      href: '/admin/feedback',
+      count: feedbackRes.count,
       accent: true,
     },
     ...(isAdminUser
@@ -141,7 +154,11 @@ export default async function AdminDashboardPage() {
       {/* Разделы админки */}
       <h2 className="mb-3 text-lg font-bold text-[var(--text)]">Разделы админки</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {(isAdminUser ? [...SECTIONS, USERS_SECTION] : SECTIONS).map((s) => (
+        {(
+          isAdminUser
+            ? [...SECTIONS, USERS_SECTION]
+            : [...SECTIONS, FEEDBACK_SECTION]
+        ).map((s) => (
           <Link
             key={s.href}
             href={s.href}
