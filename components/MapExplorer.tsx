@@ -182,47 +182,89 @@ export default function MapExplorer({
       corpus
     ) || null;
 
-  // Занятия в кабинете на выбранную дату: точная дата → недельный шаблон.
+  // Занятия в кабинете на выбранную дату: шаблон недели + замены на дату.
+  // Замены частичные: перекрывают только те пары (группа+пара), которые в них
+  // указаны. Строки с датой полностью заменяют шаблонную пару; если группу
+  // заменили В другой кабинет — её шаблонная пара из этого кабинета убирается.
   useEffect(() => {
     if (!activeCabinet) {
       setTodayRows([]);
       setRowsState('idle');
       return;
     }
-    // Регистронезависимый поиск по кабинету (жд15 / ЖД15 / «жд15 »).
     let stale = false;
     setRowsState('loading');
     const supabase = createClient();
-    supabase
+    const day = weekdayRu(selectedDate);
+
+    // Шаблон недели для этого кабинета.
+    const tplQuery = supabase
+      .from('schedule_rows')
+      .select('*')
+      .ilike('cabinet', activeCabinet)
+      .is('date', null)
+      .ilike('day_week', day)
+      .order('lesson', { ascending: true })
+      .limit(200);
+
+    // Замены на дату в этом кабинете.
+    const exactQuery = supabase
       .from('schedule_rows')
       .select('*')
       .ilike('cabinet', activeCabinet)
       .eq('date', selectedDate)
       .order('lesson', { ascending: true })
-      .limit(100)
-      .then(({ data }) => {
-        if (stale) return;
-        const exact = (data as ScheduleRow[] | null) ?? [];
-        if (exact.length > 0) {
-          setTodayRows(exact);
-          setRowsState('done');
-          return;
-        }
-        // Точных строк нет — недельный шаблон на день недели выбранной даты.
+      .limit(200);
+
+    Promise.all([
+      tplQuery.then((r) => (r.data as ScheduleRow[] | null) ?? []),
+      exactQuery.then((r) => (r.data as ScheduleRow[] | null) ?? []),
+    ]).then(([tpl, exact]) => {
+      if (stale) return;
+      if (exact.length === 0) {
+        setTodayRows(tpl);
+        setRowsState('done');
+        return;
+      }
+      // Группы из шаблона: проверяем, не увезли ли их заменами в другой кабинет.
+      const groups = Array.from(new Set(tpl.map((r) => r.group_name)));
+      const movedKeys = new Set<string>();
+      if (groups.length > 0) {
         supabase
           .from('schedule_rows')
-          .select('*')
-          .ilike('cabinet', activeCabinet)
-          .is('date', null)
-          .ilike('day_week', weekdayRu(selectedDate))
-          .order('lesson', { ascending: true })
-          .limit(100)
-          .then(({ data: tpl }) => {
+          .select('lesson, group_name, cabinet')
+          .in('group_name', groups)
+          .eq('date', selectedDate)
+          .limit(500)
+          .then(({ data: moved }) => {
             if (stale) return;
-            setTodayRows((tpl as ScheduleRow[] | null) ?? []);
+            const norm = (c: string) => (c ?? '').trim().toLowerCase();
+            ((moved as Array<Pick<ScheduleRow, 'lesson' | 'group_name' | 'cabinet'>> | null) ?? []).forEach(
+              (r) => {
+                if (norm(r.cabinet) !== norm(activeCabinet)) {
+                  movedKeys.add(`${r.lesson}|${r.group_name}`);
+                }
+              }
+            );
+            const exactKeys = new Set(
+              exact.map((r) => `${r.lesson}|${r.group_name}`)
+            );
+            const merged = [
+              ...exact,
+              ...tpl.filter(
+                (r) =>
+                  !exactKeys.has(`${r.lesson}|${r.group_name}`) &&
+                  !movedKeys.has(`${r.lesson}|${r.group_name}`)
+              ),
+            ].sort((a, b) => a.lesson - b.lesson);
+            setTodayRows(merged);
             setRowsState('done');
           });
-      });
+      } else {
+        setTodayRows(exact);
+        setRowsState('done');
+      }
+    });
     return () => {
       stale = true;
     };
