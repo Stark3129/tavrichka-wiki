@@ -10,6 +10,7 @@ const NAV = [
   { href: '/admin/posts', label: 'Посты' },
   { href: '/admin/teachers', label: 'Преподаватели' },
   { href: '/admin/map', label: 'Карта' },
+  { href: '/admin/suggestions', label: 'Предложки' },
 ];
 
 export default async function AdminLayout({
@@ -29,6 +30,12 @@ export default async function AdminLayout({
 
   if (profile?.role !== 'admin') redirect('/');
 
+  // Счётчик предложек на модерации для бейджа в навигации.
+  const { count: pendingSuggestions } = await supabase
+    .from('post_suggestions')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'pending');
+
   return (
     <div className="space-y-4">
       <nav className="card flex flex-wrap gap-1 p-2">
@@ -39,6 +46,11 @@ export default async function AdminLayout({
             className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
           >
             {item.label}
+            {item.href === '/admin/suggestions' && (pendingSuggestions ?? 0) > 0 && (
+              <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                {pendingSuggestions}
+              </span>
+            )}
           </Link>
         ))}
       </nav>

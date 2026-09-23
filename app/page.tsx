@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import PostCard from '@/components/PostCard';
+import SuggestionForm from '@/components/SuggestionForm';
 import { cn, formatDate } from '@/lib/utils';
 import type { Post, Replacement } from '@/lib/types';
 
@@ -127,6 +128,11 @@ export default async function HomePage({
         >
           Все замены →
         </Link>
+
+        <h2 className="mt-6 text-lg font-bold text-slate-900">Предложить новость или мем</h2>
+        <div className="mt-3">
+          <SuggestionForm />
+        </div>
       </aside>
     </div>
   );

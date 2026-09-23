@@ -6,8 +6,10 @@ import { createClient } from '@/lib/supabase/client';
 import {
   parseScheduleMatrix,
   parseSemesterWorkbook,
+  extractTeachers,
   type ParsedLesson,
   type ParseResult,
+  type ExtractedTeacher,
 } from '@/lib/parse-schedule';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
@@ -24,6 +26,7 @@ export default function AdminImportPage() {
   const [items, setItems] = useState<ParsedLesson[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [conflicts, setConflicts] = useState<string[]>([]);
+  const [newTeachers, setNewTeachers] = useState<ExtractedTeacher[]>([]);
   const [fileName, setFileName] = useState('');
 
   const [parsing, setParsing] = useState(false);
@@ -39,6 +42,7 @@ export default function AdminImportPage() {
     setItems([]);
     setErrors([]);
     setConflicts([]);
+    setNewTeachers([]);
 
     if (!file) {
       setParseMsg('Выберите файл .xlsx.');
@@ -76,6 +80,21 @@ export default function AdminImportPage() {
       setItems(result.items);
       setErrors(result.errors);
       setConflicts(result.conflicts);
+
+      // Новые преподаватели: извлекаем из распознанных строк и вычитаем
+      // уже существующих в таблице teachers (сравнение без учёта регистра).
+      const extracted = extractTeachers(result.items);
+      const supabase = createClient();
+      const { data: existingRows } = await supabase
+        .from('teachers')
+        .select('full_name')
+        .limit(2000);
+      const existingNames = new Set(
+        (existingRows ?? []).map((r) => String(r.full_name).toLowerCase())
+      );
+      setNewTeachers(
+        extracted.filter((t) => !existingNames.has(t.full_name.toLowerCase()))
+      );
       setFileName(file.name);
       if (result.items.length === 0) {
         setParseMsg('Не удалось распознать ни одной строки. Проверьте формат файла.');
@@ -130,6 +149,8 @@ export default function AdminImportPage() {
           .from('schedule_rows')
           .insert(payload);
         if (insErr) throw new Error('Не удалось записать недельный шаблон.');
+
+        await addNewTeachers(supabase);
 
         const { error: logErr } = await supabase.from('replacement_files').insert({
           file_name: fileName,
@@ -191,6 +212,8 @@ export default function AdminImportPage() {
           .insert(repPayload);
         if (repInsErr) throw new Error('Не удалось записать замены.');
 
+        await addNewTeachers(supabase);
+
         const { error: logErr } = await supabase.from('replacement_files').insert({
           file_name: fileName,
           rows_ok: items.length,
@@ -206,6 +229,7 @@ export default function AdminImportPage() {
       setItems([]);
       setErrors([]);
       setConflicts([]);
+      setNewTeachers([]);
       setFile(null);
       setFileName('');
     } catch (e) {
@@ -221,6 +245,19 @@ export default function AdminImportPage() {
   const teachers = Array.from(new Set(items.map((i) => i.teacher).filter(Boolean))).sort(
     (a, b) => a.localeCompare(b, 'ru')
   );
+
+  /** Автодобавление преподавателей, найденных в расписании и отсутствующих в базе. */
+  async function addNewTeachers(supabase: ReturnType<typeof createClient>) {
+    if (newTeachers.length === 0) return;
+    const { error: tErr } = await supabase.from('teachers').insert(
+      newTeachers.map((t) => ({
+        full_name: t.full_name,
+        subject: t.subjects.join(', '),
+        status: 'published' as const,
+      }))
+    );
+    if (tErr) throw new Error('Не удалось добавить новых преподавателей.');
+  }
 
   return (
     <div className="space-y-4">
@@ -387,6 +424,24 @@ export default function AdminImportPage() {
               <p className="text-xs text-slate-500">конфликтов значений</p>
             </div>
           </div>
+
+          {newTeachers.length > 0 && (
+            <div className="mt-4 rounded-lg bg-indigo-50 p-3">
+              <h3 className="text-sm font-bold text-indigo-700">
+                Новые преподаватели (будут добавлены): {newTeachers.length}
+              </h3>
+              <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-sm text-slate-700">
+                {newTeachers.map((t) => (
+                  <li key={t.full_name}>
+                    {t.full_name}
+                    {t.subjects.length > 0 && (
+                      <span className="text-slate-500"> — {t.subjects.join(', ')}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div>

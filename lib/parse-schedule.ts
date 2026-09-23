@@ -270,3 +270,45 @@ export function parseSemesterWorkbook(sheets: SemesterSheet[]): ParseResult {
 
   return { items, errors, conflicts };
 }
+
+export interface ExtractedTeacher {
+  full_name: string;
+  subjects: string[];
+}
+
+/** Служебные пометки в поле преподавателя, которые не являются ФИО. */
+const TEACHER_NOISE = /^(\d\s*подгруппа|\(обе подгруппы\))$/i;
+
+/**
+ * Извлекает уникальных преподавателей из распознанных строк расписания.
+ * Поле teacher разбивается по переносам строк на отдельные имена;
+ * служебные пометки («1 подгруппа», «2 подгруппа», «(обе подгруппы)»)
+ * и пустые строки отбрасываются; имя нормализуется (trim, схлопывание
+ * двойных пробелов); имена короче 5 символов или без пробела пропускаются.
+ */
+export function extractTeachers(items: ParsedLesson[]): ExtractedTeacher[] {
+  const map = new Map<string, Set<string>>();
+
+  for (const it of items) {
+    for (const raw of it.teacher.split(/\r?\n/)) {
+      const name = raw.replace(/\s+/g, ' ').trim();
+      if (!name) continue;
+      if (TEACHER_NOISE.test(name)) continue;
+      if (name.length < 5 || !name.includes(' ')) continue;
+
+      let subjects = map.get(name);
+      if (!subjects) {
+        subjects = new Set();
+        map.set(name, subjects);
+      }
+      if (it.subject) subjects.add(it.subject);
+    }
+  }
+
+  return Array.from(map.entries())
+    .map(([full_name, subjects]) => ({
+      full_name,
+      subjects: Array.from(subjects),
+    }))
+    .sort((a, b) => a.full_name.localeCompare(b.full_name, 'ru'));
+}
