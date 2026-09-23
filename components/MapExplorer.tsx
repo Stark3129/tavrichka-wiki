@@ -58,6 +58,17 @@ function toMinutes(hhmmss: string): number | null {
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 }
 
+/** Статические списки кабинетов «виртуальных» корпусов — сетка не может
+ * остаться пустой, даже если запрос к расписанию не вернул данных. */
+const STATIC_CABINETS: Record<string, string[]> = {
+  ЖД: [
+    'жд4', 'жд5', 'жд8', 'жд9', 'жд10', 'жд11', 'жд13', 'жд14', 'жд15',
+    'жд17', 'жд18', 'жд19', 'жд20', 'жд21', 'жд23',
+  ],
+  Спортзал: ['с/з'],
+  'Актовый зал': ['а/з'],
+};
+
 /** Сортировка кабинетов: сначала по числу в названии, потом по алфавиту. */
 function cabinetSort(a: string, b: string): number {
   const na = Number(/\d+/.exec(a)?.[0] ?? NaN);
@@ -112,6 +123,7 @@ export default function MapExplorer({
   const [selectedCabinet, setSelectedCabinet] = useState<string | null>(initialCabinet);
   const [specialCabinets, setSpecialCabinets] = useState<string[]>([]);
   const [specialLoading, setSpecialLoading] = useState(false);
+  const [specialError, setSpecialError] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(() =>
     initialDate && DATE_RE.test(initialDate) ? initialDate : today
   );
@@ -125,27 +137,33 @@ export default function MapExplorer({
   );
   const selected = objects.find((o) => o.id === selectedId) ?? null;
 
-  // «Виртуальные» корпуса: собираем уникальные кабинеты из schedule_rows.
+  // «Виртуальные» корпуса: собираем уникальные кабинеты из schedule_rows,
+  // дополняя статическим списком (на случай ошибок запроса или пустых данных).
   useEffect(() => {
     if (!specialCorpus) {
       setSpecialCabinets([]);
+      setSpecialError(false);
       return;
     }
     setSpecialLoading(true);
+    setSpecialError(false);
     const supabase = createClient();
     supabase
       .from('schedule_rows')
       .select('cabinet')
       .not('cabinet', 'is', null)
       .limit(2000)
-      .then(({ data }) => {
-        const set = new Set<string>();
-        ((data as Array<{ cabinet: string }> | null) ?? []).forEach((r) => {
-          if (r.cabinet && getCorpus(r.cabinet) === specialCorpus) {
-            set.add(r.cabinet);
-          }
-        });
+      .then(({ data, error }) => {
+        const set = new Set<string>(STATIC_CABINETS[specialCorpus] ?? []);
+        if (!error) {
+          (data as Array<{ cabinet: string }> | null ?? []).forEach((r) => {
+            if (r.cabinet && getCorpus(r.cabinet.trim()) === specialCorpus) {
+              set.add(r.cabinet.trim());
+            }
+          });
+        }
         setSpecialCabinets(Array.from(set).sort(cabinetSort));
+        setSpecialError(Boolean(error));
         setSpecialLoading(false);
       });
   }, [specialCorpus]);
@@ -164,13 +182,14 @@ export default function MapExplorer({
       setRowsState('idle');
       return;
     }
+    // Регистронезависимый поиск по кабинету (жд15 / ЖД15 / «жд15 »).
     let stale = false;
     setRowsState('loading');
     const supabase = createClient();
     supabase
       .from('schedule_rows')
       .select('*')
-      .eq('cabinet', activeCabinet)
+      .ilike('cabinet', activeCabinet)
       .eq('date', selectedDate)
       .order('lesson', { ascending: true })
       .limit(100)
@@ -186,7 +205,7 @@ export default function MapExplorer({
         supabase
           .from('schedule_rows')
           .select('*')
-          .eq('cabinet', activeCabinet)
+          .ilike('cabinet', activeCabinet)
           .is('date', null)
           .ilike('day_week', weekdayRu(selectedDate))
           .order('lesson', { ascending: true })
@@ -368,12 +387,13 @@ export default function MapExplorer({
             {specialLoading && (
               <p className="mt-3 text-sm text-slate-500">Загружаем…</p>
             )}
-            {!specialLoading && specialCabinets.length === 0 && (
-              <p className="mt-3 text-sm text-slate-500">
-                В расписании пока нет кабинетов этого корпуса.
+            {specialError && !specialLoading && (
+              <p className="mt-3 text-xs text-amber-600">
+                Не удалось обновить список из расписания — показан базовый
+                список кабинетов.
               </p>
             )}
-            {specialCabinets.length > 0 && (
+            {!specialLoading && specialCabinets.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {specialCabinets.map((c) => (
                   <button
