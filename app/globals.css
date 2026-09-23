@@ -150,6 +150,19 @@
 }
 
 @layer components {
+  /* Жидкое стекло: полупрозрачный фон карточки; blur только на десктопе (md+),
+     на мобильных (<768px) фон сплошной полупрозрачный без backdrop-filter. */
+  .glass-card {
+    background-color: color-mix(in srgb, var(--bg-card) 80%, transparent);
+  }
+
+  @media (min-width: 768px) {
+    .glass-card {
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+  }
+
   /* Карточка: скругления, тонкая рамка, мягкая тень */
   .card {
     background-color: var(--bg-card);

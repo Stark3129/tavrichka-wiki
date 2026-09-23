@@ -52,7 +52,7 @@ export default async function HomePage({
     <div className="mx-auto max-w-7xl px-4 py-8">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Замены сегодня — широкая карточка */}
-        <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] shadow-lg transition-transform duration-200 md:hover:-translate-y-1 lg:col-span-2">
+        <section className="overflow-hidden rounded-2xl border border-white/10 glass-card bg-transparent shadow-lg transition-transform duration-200 md:hover:-translate-y-1 lg:col-span-2">
           <div className="flex items-center justify-between bg-gradient-to-r from-cyan-50 to-blue-50 px-6 py-4 dark:from-cyan-950/30 dark:to-blue-950/30">
             <h2 className="text-lg font-bold text-[var(--text)]">🔄 Замены сегодня</h2>
             <Link
@@ -107,7 +107,7 @@ export default async function HomePage({
           <Link
             key={item.href}
             href={item.href}
-            className="block overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] shadow-lg transition-all duration-200 hover:border-cyan-300 hover:shadow-xl dark:hover:border-cyan-700 md:hover:-translate-y-1 lg:col-span-1"
+            className="block overflow-hidden rounded-2xl border border-white/10 glass-card bg-transparent shadow-lg transition-all duration-200 hover:border-cyan-300 hover:shadow-xl dark:hover:border-cyan-700 md:hover:-translate-y-1 lg:col-span-1"
           >
             <div className="bg-gradient-to-r from-cyan-50 to-blue-50 px-6 py-4 dark:from-cyan-950/30 dark:to-blue-950/30">
               <h2 className="text-lg font-bold text-[var(--text)]">
@@ -119,7 +119,7 @@ export default async function HomePage({
         ))}
 
         {/* Предложить мем / новость */}
-        <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] shadow-lg transition-transform duration-200 md:hover:-translate-y-1 lg:col-span-1">
+        <section className="overflow-hidden rounded-2xl border border-white/10 glass-card bg-transparent shadow-lg transition-transform duration-200 md:hover:-translate-y-1 lg:col-span-1">
           <div className="bg-gradient-to-r from-cyan-50 to-blue-50 px-6 py-4 dark:from-cyan-950/30 dark:to-blue-950/30">
             <h2 className="text-lg font-bold text-[var(--text)]">✍️ Предложить мем</h2>
           </div>
@@ -129,7 +129,7 @@ export default async function HomePage({
         </section>
 
         {/* Лента новостей — самая широкая карточка */}
-        <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] shadow-lg lg:col-span-3">
+        <section className="overflow-hidden rounded-2xl border border-white/10 glass-card bg-transparent shadow-lg lg:col-span-3">
           <div className="bg-gradient-to-r from-cyan-50 to-blue-50 px-6 py-4 dark:from-cyan-950/30 dark:to-blue-950/30">
             <h2 className="text-lg font-bold text-[var(--text)]">📰 Лента</h2>
           </div>

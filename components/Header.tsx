@@ -71,14 +71,14 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 shadow-md md:backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-white/10 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 shadow-md md:from-cyan-500/80 md:via-blue-600/80 md:to-indigo-600/80 md:backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <Link
           href="/"
           className="flex items-center gap-2 text-lg font-bold tracking-tight text-white"
         >
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/20 text-sm font-black text-white">
-            ТВ
+          <span className="grid h-8 w-10 shrink-0 place-items-center rounded-lg border border-white/30 bg-white/20 font-mono text-sm font-black tracking-tight text-white">
+            2.8
           </span>
           Тавричка&nbsp;Вики
         </Link>
