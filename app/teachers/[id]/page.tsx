@@ -13,6 +13,17 @@ function todayIso(): string {
   );
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** День недели по-русски с заглавной («Понедельник») для поиска в day_week. */
+function weekdayRu(iso: string): string {
+  const s = new Intl.DateTimeFormat('ru-RU', {
+    weekday: 'long',
+    timeZone: 'UTC',
+  }).format(new Date(`${iso}T12:00:00Z`));
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -30,10 +41,13 @@ export async function generateMetadata({
 
 export default async function TeacherPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ date?: string }>;
 }) {
   const { id } = await params;
+  const { date = '' } = await searchParams;
   const numericId = Number(id);
   if (!Number.isInteger(numericId)) notFound();
 
@@ -47,18 +61,35 @@ export default async function TeacherPage({
   const teacher = teacherData as Teacher | null;
   if (!teacher || teacher.status !== 'published') notFound();
 
-  // «Сегодня по кабинетам»: занятия за сегодня по совпадению фамилии (ilike).
+  // Занятия по кабинетам на выбранную дату (по совпадению фамилии, ilike).
+  const selectedDate = DATE_RE.test(date) ? date : todayIso();
+  const isToday = selectedDate === todayIso();
+
   const surname = teacher.full_name.trim().split(/\s+/)[0] ?? '';
   let todayRows: ScheduleRow[] = [];
   if (surname) {
     const { data } = await supabase
       .from('schedule_rows')
       .select('*')
-      .eq('date', todayIso())
+      .eq('date', selectedDate)
       .ilike('teacher', `%${surname}%`)
       .order('lesson', { ascending: true })
       .limit(100);
     todayRows = (data as ScheduleRow[] | null) ?? [];
+
+    // Занятий с точной датой нет — берём недельный шаблон (date is null)
+    // на день недели выбранной даты.
+    if (todayRows.length === 0) {
+      const { data: tpl } = await supabase
+        .from('schedule_rows')
+        .select('*')
+        .is('date', null)
+        .ilike('teacher', `%${surname}%`)
+        .ilike('day_week', weekdayRu(selectedDate))
+        .order('lesson', { ascending: true })
+        .limit(100);
+      todayRows = (tpl as ScheduleRow[] | null) ?? [];
+    }
   }
 
   return (
@@ -113,10 +144,31 @@ export default async function TeacherPage({
           )}
         </section>
 
-        {/* Сегодня по кабинетам */}
+        {/* Занятия по кабинетам на выбранную дату */}
         <aside className="card self-start p-4">
-          <h2 className="text-base font-bold text-slate-900">Сегодня по кабинетам</h2>
-          <p className="mt-0.5 text-xs text-slate-500">{formatDate(todayIso())}</p>
+          <h2 className="text-base font-bold text-slate-900">
+            {isToday
+              ? 'Сегодня по кабинетам'
+              : `Занятия по кабинетам на ${formatDate(selectedDate)}`}
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-500">{formatDate(selectedDate)}</p>
+
+          {/* GET-форма выбора даты — работает без клиентского JS */}
+          <form action={`/teachers/${numericId}`} method="get" className="mt-2">
+            <label htmlFor="teacher-date" className="label">
+              Дата
+            </label>
+            <input
+              id="teacher-date"
+              type="date"
+              name="date"
+              defaultValue={selectedDate}
+              className="input"
+            />
+            <button type="submit" className="btn btn-outline mt-2 w-full text-sm">
+              Показать
+            </button>
+          </form>
 
           <div className="mt-3 space-y-2">
             {todayRows.length > 0 ? (
@@ -137,7 +189,7 @@ export default async function TeacherPage({
             ) : (
               <p className="text-sm text-slate-500">
                 {surname
-                  ? 'Сегодня занятий по расписанию нет.'
+                  ? 'На эту дату занятий по расписанию нет.'
                   : 'Не удалось определить фамилию для поиска.'}
               </p>
             )}
