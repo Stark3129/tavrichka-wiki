@@ -13,9 +13,9 @@
   --border: #e5e5e5;
   --accent: #6366f1;
   --accent-hover: #4f46e5;
-  --gradient-1: #6366f1;
-  --gradient-2: #a855f7;
-  --gradient-3: #ec4899;
+  --gradient-1: #06b6d4;
+  --gradient-2: #3b82f6;
+  --gradient-3: #6366f1;
 }
 
 .dark {
@@ -29,41 +29,89 @@
 }
 
 /* Живой фон — плавающие градиентные пятна (лёгкая CSS-анимация) */
+.bg-grid {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-image:
+    linear-gradient(to right, rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(6, 182, 212, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.dark .bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(6, 182, 212, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(6, 182, 212, 0.06) 1px, transparent 1px);
+}
+
+.bg-dots {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-image: radial-gradient(rgba(59, 130, 246, 0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+.dark .bg-dots {
+  background-image: radial-gradient(rgba(99, 102, 241, 0.2) 1px, transparent 1px);
+}
+
 .bg-gradient-blob {
   position: fixed;
   border-radius: 50%;
   filter: blur(80px);
-  opacity: 0.4;
+  opacity: 0.35;
   z-index: -1;
   animation: float 20s infinite ease-in-out;
   pointer-events: none;
 }
 
 .blob-1 {
-  width: 400px;
-  height: 400px;
+  width: 500px;
+  height: 500px;
   background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2));
-  top: -100px;
+  top: -150px;
   left: -100px;
   animation-delay: 0s;
 }
 
 .blob-2 {
-  width: 300px;
-  height: 300px;
+  width: 400px;
+  height: 400px;
   background: linear-gradient(135deg, var(--gradient-2), var(--gradient-3));
-  top: 50%;
-  right: -50px;
+  top: 40%;
+  right: -80px;
   animation-delay: -5s;
 }
 
 .blob-3 {
-  width: 350px;
-  height: 350px;
+  width: 450px;
+  height: 450px;
   background: linear-gradient(135deg, var(--gradient-3), var(--gradient-1));
   bottom: -100px;
-  left: 30%;
+  left: 20%;
   animation-delay: -10s;
+}
+
+.blob-4 {
+  width: 350px;
+  height: 350px;
+  background: linear-gradient(135deg, var(--gradient-1), var(--gradient-3));
+  top: 20%;
+  left: -150px;
+  animation-delay: -15s;
+}
+
+.blob-5 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, var(--gradient-2), var(--gradient-1));
+  bottom: 10%;
+  right: -100px;
+  animation-delay: -7s;
 }
 
 @keyframes float {
@@ -72,27 +120,21 @@
   66% { transform: translate(-20px, 20px) scale(0.9); }
 }
 
-/* Отключаем тяжёлые эффекты на мобильных */
 @media (max-width: 768px) {
   .bg-gradient-blob {
     filter: blur(40px);
-    opacity: 0.2;
+    opacity: 0.15;
   }
-  .blob-1, .blob-2, .blob-3 {
+  .blob-1, .blob-2, .blob-3, .blob-4, .blob-5 {
     width: 200px;
     height: 200px;
   }
+  .bg-grid { background-size: 20px 20px; }
+  .bg-dots { background-size: 16px 16px; }
 }
 
-/* Уважаем prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
-  .bg-gradient-blob {
-    animation: none;
-  }
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+  .bg-gradient-blob { animation: none; }
 }
 
 @layer base {
