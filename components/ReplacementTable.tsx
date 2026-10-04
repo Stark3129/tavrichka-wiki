@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { getMyGroup, subscribeMyGroup } from '@/lib/my-group';
 import type { Replacement } from '@/lib/types';
 
@@ -175,20 +175,37 @@ export default function ReplacementTable({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
-                <tr key={r.id} className="border-b border-[var(--border)] hover:bg-[var(--bg)]">
-                  <td className="whitespace-nowrap px-2 py-2">{formatDate(r.r_date)}</td>
-                  <td className="px-2 py-2 font-medium text-[var(--text)]">{r.group_name}</td>
-                  <td className="px-2 py-2">{r.lesson}</td>
-                  <td className="px-2 py-2">{r.subject}</td>
-                  <td className="px-2 py-2">
-                    <span className="badge bg-indigo-50 text-indigo-700">{r.change_type}</span>
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-2">{r.teacher}</td>
-                  <td className="px-2 py-2">{r.cabinet}</td>
-                  <td className="px-2 py-2 text-[var(--text-muted)]">{r.note}</td>
-                </tr>
-              ))}
+              {filtered.map((r) => {
+                const isCancelled = r.change_type === 'отмена';
+                return (
+                  <tr
+                    key={r.id}
+                    className={cn(
+                      'border-b border-[var(--border)] hover:bg-[var(--bg)]',
+                      isCancelled && 'opacity-70'
+                    )}
+                  >
+                    <td className="whitespace-nowrap px-2 py-2">{formatDate(r.r_date)}</td>
+                    <td className="px-2 py-2 font-medium text-[var(--text)]">{r.group_name}</td>
+                    <td className="px-2 py-2">{r.lesson}</td>
+                    <td className="px-2 py-2">{r.subject || (isCancelled ? '—' : '')}</td>
+                    <td className="px-2 py-2">
+                      {isCancelled ? (
+                        <span className="badge bg-red-500/20 text-red-400 border border-red-500/30">
+                          отмена
+                        </span>
+                      ) : (
+                        <span className="badge bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                          {r.change_type}
+                        </span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-2">{r.teacher || '—'}</td>
+                    <td className="px-2 py-2">{r.cabinet || '—'}</td>
+                    <td className="px-2 py-2 text-[var(--text-muted)]">{r.note || '—'}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -9,6 +9,7 @@ export interface ParsedLesson {
   subject: string;
   teacher: string;
   cabinet: string;
+  type?: 'замена' | 'отмена';
 }
 
 export interface ParseResult {
@@ -17,10 +18,27 @@ export interface ParseResult {
   conflicts: string[];
 }
 
+export interface ParseMatrixOptions {
+  isReplacement?: boolean;
+}
+
+export const CANCELLATION_RE = /отмен|снят|не\s*будет/i;
+
+export function extractCleanSubject(lines: string[]): string {
+  const nonCancel = lines.filter((line) => !CANCELLATION_RE.test(line.trim()));
+  if (nonCancel.length > 0) {
+    let subj = nonCancel[0].replace(CANCELLATION_RE, '').trim();
+    subj = subj.replace(/^[-–—:()/\s]+|[-–—:()/\s]+$/g, '').trim();
+    return subj || nonCancel[0].trim();
+  }
+  return '';
+}
+
 interface Acc {
   subject: string;
   teachers: string;
   cabinets: string;
+  isCancel?: boolean;
 }
 
 interface GroupCol {
@@ -48,7 +66,10 @@ function isAudMarker(t: string): boolean {
   return /^ауд/i.test(t);
 }
 
-export function parseScheduleMatrix(rows: unknown[][]): ParseResult {
+export function parseScheduleMatrix(
+  rows: unknown[][],
+  options?: ParseMatrixOptions
+): ParseResult {
   const errors: string[] = [];
   const conflicts: string[] = [];
   const items: ParsedLesson[] = [];
@@ -150,18 +171,38 @@ export function parseScheduleMatrix(rows: unknown[][]): ParseResult {
       const cabLines = cellLines(row[g.cabinetCol]);
       if (subjLines.length === 0 && cabLines.length === 0) continue;
 
-      const subject = subjLines[0] ?? '';
+      const allTexts = [...subjLines, ...cabLines].join(' ');
+      const hasCancelKeyword = CANCELLATION_RE.test(allTexts);
+
+      const rawSubject = subjLines[0] ?? '';
       const teachersStr = subjLines.slice(1).join('\n'); // первая строка — предмет, остальные — преподаватели
       const cabinetsStr = cabLines.join('\n');
+
+      const noTeacherNoCabinet = teachersStr.trim().length === 0 && cabinetsStr.trim().length === 0;
+      // В режиме замен: отсутствие преподавателя и кабинета — это отмена пары
+      // Либо явный маркер отмены в любом поле ячейки
+      const isCancel = hasCancelKeyword || (Boolean(options?.isReplacement) && noTeacherNoCabinet);
+
+      const subject = isCancel ? extractCleanSubject(subjLines) : rawSubject;
 
       const key = `${day}|${lesson}|${g.name}`;
       const prev = acc.get(key);
       if (!prev) {
         acc.set(key, {
           subject,
-          teachers: teachersStr,
-          cabinets: cabinetsStr,
+          teachers: isCancel ? '' : teachersStr,
+          cabinets: isCancel ? '' : cabinetsStr,
+          isCancel,
         });
+        continue;
+      }
+
+      // Если одна из строк содержит отмену — пара считается отменённой
+      if (isCancel || prev.isCancel) {
+        prev.isCancel = true;
+        if (subject && !prev.subject) {
+          prev.subject = subject;
+        }
         continue;
       }
 
@@ -199,13 +240,26 @@ export function parseScheduleMatrix(rows: unknown[][]): ParseResult {
 
   // 4. Разворачиваем накопленное в строки «одна строка на пару (преподаватель, кабинет)».
   for (const [key, a] of acc) {
+    const [day, lessonStr, groupName] = key.split('|');
+    const lesson = Number(lessonStr);
+
+    if (a.isCancel) {
+      items.push({
+        day_week: day,
+        lesson,
+        group_name: groupName,
+        subject: a.subject,
+        teacher: '',
+        cabinet: '',
+        type: 'отмена',
+      });
+      continue;
+    }
+
     if (!a.subject) {
-      const [day, lessonStr, groupName] = key.split('|');
       errors.push(`Не определён предмет: ${day}, пара ${lessonStr}, группа ${groupName}.`);
       continue;
     }
-    const [day, lessonStr, groupName] = key.split('|');
-    const lesson = Number(lessonStr);
     const teachers = a.teachers ? a.teachers.split('\n') : [];
     const cabinets = a.cabinets ? a.cabinets.split('\n') : [];
 
@@ -220,6 +274,7 @@ export function parseScheduleMatrix(rows: unknown[][]): ParseResult {
         subject: a.subject,
         teacher: '',
         cabinet: '',
+        type: 'замена',
       });
       continue;
     }
@@ -231,6 +286,7 @@ export function parseScheduleMatrix(rows: unknown[][]): ParseResult {
         subject: a.subject,
         teacher: teachers[i] ?? '',
         cabinet: cabinets[i] ?? '',
+        type: 'замена',
       });
     }
   }
@@ -260,7 +316,7 @@ export function parseSemesterWorkbook(sheets: SemesterSheet[]): ParseResult {
   const conflicts: string[] = [];
 
   for (const sheet of sheets) {
-    const res = parseScheduleMatrix(sheet.rows);
+    const res = parseScheduleMatrix(sheet.rows, { isReplacement: false });
 
     // Лист вообще не является матрицей расписания — не шумим ошибкой.
     if (
@@ -315,6 +371,7 @@ export function extractTeachers(items: ParsedLesson[]): ExtractedTeacher[] {
   const map = new Map<string, ExtractedTeacher>();
 
   for (const it of items) {
+    if (it.type === 'отмена') continue;
     for (const raw of it.teacher.split(/\r?\n/)) {
       if (!raw.trim()) continue;
       if (TEACHER_NOISE.test(raw.trim())) continue;

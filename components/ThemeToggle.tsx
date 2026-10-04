@@ -8,7 +8,7 @@ import { Moon, Sun } from 'lucide-react';
  * Переключает класс 'dark' на <html> и сохраняет выбор
  * в localStorage под ключом 'theme'.
  */
-export default function ThemeToggle() {
+export default function ThemeToggle({ className }: { className?: string } = {}) {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
 
@@ -35,7 +35,11 @@ export default function ThemeToggle() {
       onClick={toggle}
       aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}
       title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-      className="btn btn-outline !px-2.5"
+      className={
+        className
+          ? `btn !rounded-lg !border-white/30 !bg-white/10 !text-white flex items-center justify-center transition-colors ${className}`
+          : 'btn btn-outline !px-2.5'
+      }
     >
       {mounted && theme === 'dark' ? (
         <Sun className="h-4 w-4" />

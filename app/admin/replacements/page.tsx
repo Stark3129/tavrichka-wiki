@@ -11,7 +11,7 @@ const TYPES = ['замена', 'отмена', 'добавление'] as const;
 
 const TYPE_BADGE: Record<string, string> = {
   замена: 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300',
-  отмена: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300',
+  отмена: 'bg-red-500/20 text-red-400 border border-red-500/30',
   добавление: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
 };
 
@@ -35,6 +35,13 @@ function todayIso(): string {
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split('-');
   return `${d}.${m}.${y}`;
+}
+
+function weekdayRu(iso: string): string {
+  return new Intl.DateTimeFormat('ru-RU', {
+    weekday: 'long',
+    timeZone: 'UTC',
+  }).format(new Date(`${iso}T12:00:00Z`));
 }
 
 export default function AdminReplacementsPage() {
@@ -84,19 +91,21 @@ function AdminReplacementsPageInner() {
       setError('Некорректная дата.');
       return;
     }
-    if (!form.group_name.trim() || !form.subject.trim() || !form.lesson) {
-      setError('Заполните группу, пару и предмет.');
+    const isCancel = form.change_type === 'отмена';
+    if (!form.group_name.trim() || !form.lesson || (!isCancel && !form.subject.trim())) {
+      setError(isCancel ? 'Заполните группу и пару.' : 'Заполните группу, пару и предмет.');
       return;
     }
     setBusy(true);
     setError(null);
     setOkMsg(null);
     const supabase = createClient();
+    const subjectValue = form.subject.trim() || (isCancel ? 'Отмена' : '');
     const payload = {
       r_date: date,
       group_name: form.group_name.trim(),
       lesson: Number(form.lesson),
-      subject: form.subject.trim(),
+      subject: subjectValue,
       teacher: form.teacher.trim() || null,
       cabinet: form.cabinet.trim() || null,
       change_type: form.change_type,
@@ -106,6 +115,27 @@ function AdminReplacementsPageInner() {
       editingId !== null
         ? await supabase.from('replacements').update(payload).eq('id', editingId)
         : await supabase.from('replacements').insert(payload);
+    if (!err) {
+      // Синхронизируем датированную строку в schedule_rows для расписания и BellWidget
+      await supabase
+        .from('schedule_rows')
+        .delete()
+        .eq('date', date)
+        .eq('group_name', form.group_name.trim())
+        .eq('lesson', Number(form.lesson));
+
+      await supabase.from('schedule_rows').insert({
+        date,
+        week_type: 'числитель',
+        day_week: weekdayRu(date),
+        lesson: Number(form.lesson),
+        group_name: form.group_name.trim(),
+        subject: subjectValue,
+        teacher: form.teacher.trim() || null,
+        cabinet: form.cabinet.trim() || null,
+        type: form.change_type,
+      });
+    }
     setBusy(false);
     if (err) {
       setError(
@@ -149,6 +179,14 @@ function AdminReplacementsPageInner() {
     setOkMsg(null);
     const supabase = createClient();
     const { error: err } = await supabase.from('replacements').delete().eq('id', r.id);
+    if (!err) {
+      await supabase
+        .from('schedule_rows')
+        .delete()
+        .eq('date', r.r_date)
+        .eq('group_name', r.group_name)
+        .eq('lesson', r.lesson);
+    }
     setBusy(false);
     if (err) {
       setError('Не удалось удалить замену.');
@@ -341,7 +379,9 @@ function AdminReplacementsPageInner() {
                 {rows.map((r) => (
                   <tr
                     key={r.id}
-                    className="border-b border-[var(--border)] transition-colors hover:bg-cyan-50/50 dark:hover:bg-cyan-950/30"
+                    className={`border-b border-[var(--border)] transition-colors hover:bg-cyan-50/50 dark:hover:bg-cyan-950/30 ${
+                      r.change_type === 'отмена' ? 'opacity-70' : ''
+                    }`}
                   >
                     <td className="px-3 py-2.5">
                       <span className="inline-flex items-center rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-2.5 py-1 text-xs font-semibold text-white">

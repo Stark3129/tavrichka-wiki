@@ -36,9 +36,13 @@ export function mergeScheduleRows(
   }
 
   // Схлопываем дубликатные замены от повторного импорта.
+  // Строки с type === 'отмена' удаляют шаблонную пару (их ключ в replacedKeys),
+  // но сами в результат НЕ добавляются.
   const seen = new Set<string>();
   const uniqueReplacements: ScheduleRow[] = [];
   for (const r of replacementRows) {
+    if (r.type === 'отмена') continue;
+
     const k = `${rowKey(r.lesson, r.group_name)}|${normGroup(r.subject)}|${normGroup(r.teacher)}|${normGroup(r.cabinet)}`;
     if (seen.has(k)) continue;
     seen.add(k);

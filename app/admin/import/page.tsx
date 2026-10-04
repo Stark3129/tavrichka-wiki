@@ -83,7 +83,8 @@ function AdminImportPageInner() {
             header: 1,
             defval: '',
             blankrows: true,
-          })
+          }),
+          { isReplacement: true }
         );
       }
       setItems(result.items);
@@ -189,9 +190,10 @@ function AdminImportPageInner() {
           day_week: it.day_week,
           lesson: it.lesson,
           group_name: it.group_name,
-          subject: it.subject,
+          subject: it.subject || (it.type === 'отмена' ? 'Отмена' : null),
           teacher: it.teacher || null,
           cabinet: it.cabinet || null,
+          type: it.type || 'замена',
         }));
 
         const { error: insErr } = await supabase
@@ -210,10 +212,10 @@ function AdminImportPageInner() {
           r_date: date,
           group_name: it.group_name,
           lesson: it.lesson,
-          subject: it.subject,
+          subject: it.subject || (it.type === 'отмена' ? 'Отмена' : ''),
           teacher: it.teacher || null,
           cabinet: it.cabinet || null,
-          change_type: 'замена',
+          change_type: it.type || 'замена',
           note: '',
         }));
         const { error: repInsErr } = await supabase
@@ -509,6 +511,7 @@ function AdminImportPageInner() {
                   <th className="px-2 py-1.5">День</th>
                   <th className="px-2 py-1.5">Пара</th>
                   <th className="px-2 py-1.5">Группа</th>
+                  <th className="px-2 py-1.5">Тип</th>
                   <th className="px-2 py-1.5">Предмет</th>
                   <th className="px-2 py-1.5">Преподаватель</th>
                   <th className="px-2 py-1.5">Кабинет</th>
@@ -520,7 +523,18 @@ function AdminImportPageInner() {
                     <td className="px-2 py-1.5">{it.day_week}</td>
                     <td className="px-2 py-1.5">{it.lesson}</td>
                     <td className="px-2 py-1.5">{it.group_name}</td>
-                    <td className="px-2 py-1.5">{it.subject}</td>
+                    <td className="px-2 py-1.5">
+                      {it.type === 'отмена' ? (
+                        <span className="badge bg-red-500/20 text-red-400 border border-red-500/30">
+                          отмена
+                        </span>
+                      ) : (
+                        <span className="badge bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                          замена
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">{it.subject || (it.type === 'отмена' ? '—' : '')}</td>
                     <td className="px-2 py-1.5">{it.teacher || '—'}</td>
                     <td className="px-2 py-1.5">{it.cabinet || '—'}</td>
                   </tr>

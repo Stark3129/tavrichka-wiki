@@ -31,6 +31,7 @@ export interface ScheduleRow {
   subject: string;
   teacher: string;
   cabinet: string;
+  type?: 'замена' | 'отмена' | string;
   created_at: string;
 }
 

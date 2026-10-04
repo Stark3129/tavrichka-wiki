@@ -52,13 +52,15 @@ export default async function RootLayout({
         className={`flex min-h-screen flex-col bg-[var(--bg)] text-[var(--text)] ${inter.variable} font-sans`}
       >
         {/* Живой фон: сетка, точки и плавающие градиентные пятна (чистый CSS) */}
-        <div className="bg-grid" />
-        <div className="bg-dots" />
-        <div className="bg-gradient-blob blob-1" />
-        <div className="bg-gradient-blob blob-2" />
-        <div className="bg-gradient-blob blob-3" />
-        <div className="bg-gradient-blob blob-4" />
-        <div className="bg-gradient-blob blob-5" />
+        <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+          <div className="bg-grid" />
+          <div className="bg-dots" />
+          <div className="bg-gradient-blob blob-1" />
+          <div className="bg-gradient-blob blob-2" />
+          <div className="bg-gradient-blob blob-3" />
+          <div className="bg-gradient-blob blob-4" />
+          <div className="bg-gradient-blob blob-5" />
+        </div>
         <SearchProvider>
           <Header user={user} isAdmin={isAdmin} userRole={userRole} />
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
