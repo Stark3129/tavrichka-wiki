@@ -272,7 +272,8 @@ export async function parseReplacementsWorkbook(
     const actRow = rowsData[i + 1];
     if (!actRow) continue;
 
-    const day = baseRow.day;
+    const dateDay = targetDate ? new Intl.DateTimeFormat('ru-RU', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${targetDate.slice(0, 10)}T12:00:00Z`)) : '';
+    const day = (baseRow.day || dateDay).trim().toLowerCase();
     const lessonNum = Number(baseRow.lesson);
     if (!lessonNum || isNaN(lessonNum)) continue;
 

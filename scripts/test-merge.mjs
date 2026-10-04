@@ -162,4 +162,25 @@ assert.strictEqual(resConflict.find(r => r.lesson === 1)?.subject, 'One-day За
 assert.strictEqual(resConflict.find(r => r.lesson === 3), undefined, 'Отмена completely removes lesson 3 even with permanent present');
 assert.strictEqual(resConflict.find(r => r.lesson === 4)?.subject, 'Шаблон 4', 'Template preserved when no change');
 
+// Test 5: Permanent change on Thursday does NOT leak into Monday
+const thursdayPerm = [
+  {
+    id: 50,
+    date: '2026-09-24', // Thursday
+    week_type: 'знаменатель',
+    day_week: 'четверг',
+    lesson: 2,
+    group_name: '4КСК30',
+    subject: 'Четверговый permanent',
+    teacher: 'Учитель Ч',
+    cabinet: '404',
+    type: 'permanent',
+    valid_until: null,
+    created_at: '2026-09-24T00:00:00Z',
+  },
+];
+const resMonday = mergeScheduleRows(tpl, thursdayPerm, new Set(), '2026-10-05'); // 2026-10-05 is Monday
+assert.strictEqual(resMonday.find(r => r.lesson === 2)?.subject, 'Шаблон 2', 'Thursday permanent MUST NOT leak into Monday template');
+
 console.log('Merge unit tests PASSED successfully!');
+

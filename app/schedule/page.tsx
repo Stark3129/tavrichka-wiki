@@ -103,6 +103,7 @@ export default async function SchedulePage({
         .select('*')
         .eq('group_name', group)
         .eq('type', 'permanent')
+        .ilike('day_week', weekday)
         .lte('date', selectedDate)
         .order('date', { ascending: false }),
     ]);
@@ -110,7 +111,7 @@ export default async function SchedulePage({
     const dated = (datedRes.data as ScheduleRow[] | null) ?? [];
     const perm = (permRes.data as ScheduleRow[] | null) ?? [];
     const allReplacements = [...dated, ...perm];
-    rows = mergeScheduleRows(tpl, allReplacements, undefined, selectedDate);
+    rows = mergeScheduleRows(tpl, allReplacements, undefined, selectedDate, weekday);
     if (allReplacements.length > 0) source = 'replacements';
   }
 
@@ -252,8 +253,14 @@ export default async function SchedulePage({
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5">{r.teacher}</td>
-                    <td className="px-3 py-2.5">{r.cabinet}</td>
+                    <td className="px-3 py-2.5">{r.teacher || '—'}</td>
+                    <td className="px-3 py-2.5">
+                      {r.cabinet ? (
+                        r.cabinet
+                      ) : (
+                        <span className="text-[var(--text-muted)] italic">Кабинет не указан</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -30,12 +30,28 @@ export function mergeScheduleRows(
   replacementRows: ScheduleRow[],
   removeKeys: ReadonlySet<string> = new Set<string>(),
   targetDate?: string,
+  targetDay?: string,
 ): ScheduleRow[] {
   // Если целевая дата не передана явно, пытаемся взять первую дату из датированных строк
   const effectiveDate =
     targetDate ||
     replacementRows.find((r) => r.date && r.type !== 'permanent')?.date ||
     undefined;
+
+  // Вычисляем целевой день недели (в нижнем регистре): из аргумента targetDay,
+  // либо из effectiveDate, либо из первой строки шаблона
+  const resolvedTargetDay = (
+    targetDay ||
+    (effectiveDate
+      ? new Intl.DateTimeFormat('ru-RU', { weekday: 'long', timeZone: 'UTC' }).format(
+          new Date(`${effectiveDate.slice(0, 10)}T12:00:00Z`)
+        )
+      : undefined) ||
+    templateRows[0]?.day_week ||
+    ''
+  )
+    .trim()
+    .toLowerCase();
 
   // Группируем строки замен по ключу: пара + группа
   const cancellationsByKey = new Map<string, ScheduleRow[]>();
@@ -54,11 +70,15 @@ export function mergeScheduleRows(
       }
     } else if (r.type === 'permanent') {
       // Постоянное изменение действует для любой даты D, если row.date <= D и (valid_until is null или >= D)
+      // И ОБЯЗАТЕЛЬНО должен совпадать день недели с целевым днем!
       const isAfterStart = !effectiveDate || !rowDate || rowDate <= effectiveDate;
       const validUntilDate = r.valid_until ? r.valid_until.slice(0, 10) : null;
       const isBeforeEnd = !effectiveDate || !validUntilDate || validUntilDate >= effectiveDate;
 
-      if (isAfterStart && isBeforeEnd) {
+      const rDay = (r.day_week || '').trim().toLowerCase();
+      const isSameDay = !resolvedTargetDay || !rDay || rDay === resolvedTargetDay;
+
+      if (isAfterStart && isBeforeEnd && isSameDay) {
         if (!permanentByKey.has(k)) permanentByKey.set(k, []);
         permanentByKey.get(k)!.push(r);
       }

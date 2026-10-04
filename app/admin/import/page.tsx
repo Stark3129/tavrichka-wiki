@@ -17,6 +17,7 @@ import {
   parseMetaFromFileName,
 } from '@/lib/replacements-parser';
 import Breadcrumbs from '@/components/Breadcrumbs';
+import { weekdayRu } from '@/lib/cabinets';
 
 type Mode = 'append' | 'replace';
 type ImportKind = 'date' | 'semester';
@@ -228,7 +229,7 @@ function AdminImportPageInner() {
         const payload = items.map((it) => ({
           date,
           week_type: weekType,
-          day_week: it.day_week,
+          day_week: it.day_week || (date ? weekdayRu(date) : ''),
           lesson: it.lesson,
           group_name: it.group_name,
           subject: it.subject || (it.type === 'отмена' ? 'Отмена' : null),
@@ -582,6 +583,15 @@ function AdminImportPageInner() {
             </div>
           )}
 
+          {items.some((it) => it.type !== 'отмена' && !it.cabinet) && (
+            <div className="mt-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 p-3 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+              <span className="text-base">⚠️</span>
+              <span>
+                <strong>Внимание:</strong> в файле замен обнаружены строки без указания аудитории (отмечены значком ⚠️ «Нет кабинета»).
+              </span>
+            </div>
+          )}
+
           <h3 className="mt-4 text-sm font-bold text-[var(--text)]">
             Примеры распознанных строк (первые 10)
           </h3>
@@ -621,7 +631,21 @@ function AdminImportPageInner() {
                     </td>
                     <td className="px-2 py-1.5">{it.subject || (it.type === 'отмена' ? '—' : '')}</td>
                     <td className="px-2 py-1.5">{it.teacher || '—'}</td>
-                    <td className="px-2 py-1.5">{it.cabinet || '—'}</td>
+                    <td className="px-2 py-1.5">
+                      {it.cabinet ? (
+                        it.cabinet
+                      ) : it.type !== 'отмена' ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                          title="Кабинет не указан в файле замен"
+                        >
+                          <span>⚠️</span>
+                          <span>Нет кабинета</span>
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

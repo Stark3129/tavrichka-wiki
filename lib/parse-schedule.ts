@@ -138,10 +138,21 @@ export function parseScheduleMatrix(
   let lastDay = '';
   let lastLesson = 0;
 
+  const VALID_DAYS = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const row = rows[i] ?? [];
-    const dayRaw = cellText(row[dayCol]);
-    const lessonRaw = cellText(row[lessonCol]);
+    const dayRaw = cellText(row[dayCol]).trim();
+    const lessonRaw = cellText(row[lessonCol]).trim();
+
+    if (dayRaw) {
+      const dayNorm = dayRaw.toLowerCase();
+      if (!VALID_DAYS.includes(dayNorm)) {
+        // Встречен служебный блок («Согласовано», «Утверждаю» и т.п.) — прерываем парсинг текущего листа
+        break;
+      }
+      lastDay = dayNorm;
+    }
 
     const hasContent = usable.some(
       (g) => cellText(row[g.subjectCol]) || cellText(row[g.cabinetCol])
@@ -149,7 +160,9 @@ export function parseScheduleMatrix(
     if (!dayRaw && !lessonRaw && !hasContent) continue; // пустая или мусорная строка
 
     // Объединённые ячейки: пустые день/пара наследуем от предыдущей строки данных.
-    const day = dayRaw || lastDay;
+    const day = lastDay;
+    if (!day || !VALID_DAYS.includes(day)) continue; // день так и не определился или не входит в белый список
+
     let lesson = lastLesson;
     if (lessonRaw) {
       if (!/^\d+$/.test(lessonRaw)) {
@@ -160,10 +173,8 @@ export function parseScheduleMatrix(
     } else if (!hasContent) {
       continue;
     }
-    if (!day) continue; // день так и не определился — строку не атрибуцируем
     if (!lesson) continue;
 
-    lastDay = day;
     lastLesson = lesson;
 
     for (const g of usable) {

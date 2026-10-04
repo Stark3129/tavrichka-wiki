@@ -221,7 +221,15 @@ export default function ReplacementTable({
                       )}
                     </td>
                     <td className="whitespace-nowrap px-2 py-2">{r.teacher || '—'}</td>
-                    <td className="px-2 py-2">{r.cabinet || '—'}</td>
+                    <td className="px-2 py-2">
+                      {isCancelled ? (
+                        '—'
+                      ) : r.cabinet ? (
+                        r.cabinet
+                      ) : (
+                        <span className="text-[var(--text-muted)] italic">Кабинет не указан</span>
+                      )}
+                    </td>
                     <td className="px-2 py-2 text-[var(--text-muted)]">{r.note || '—'}</td>
                   </tr>
                 );

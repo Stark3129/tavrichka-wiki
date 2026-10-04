@@ -170,13 +170,14 @@ export default function BellWidget({
         .select('*')
         .eq('group_name', myGroup)
         .eq('type', 'permanent')
+        .ilike('day_week', day)
         .lte('date', todayIso)
         .order('date', { ascending: false }),
     ]).then(([tplRes, datedRes, permRes]) => {
       const tpl = (tplRes.data as ScheduleRow[] | null) ?? [];
       const dated = (datedRes.data as ScheduleRow[] | null) ?? [];
       const perm = (permRes.data as ScheduleRow[] | null) ?? [];
-      const todayRows = mergeScheduleRows(tpl, [...dated, ...perm], undefined, todayIso).sort(
+      const todayRows = mergeScheduleRows(tpl, [...dated, ...perm], undefined, todayIso, day).sort(
         (a, b) => a.lesson - b.lesson
       );
 
