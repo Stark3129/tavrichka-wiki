@@ -12,6 +12,10 @@ import {
   type ParseResult,
   type ExtractedTeacher,
 } from '@/lib/parse-schedule';
+import {
+  parseReplacementsWorkbook,
+  parseMetaFromFileName,
+} from '@/lib/replacements-parser';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
 type Mode = 'append' | 'replace';
@@ -37,6 +41,13 @@ function AdminImportPageInner() {
   const [conflicts, setConflicts] = useState<string[]>([]);
   const [newTeachers, setNewTeachers] = useState<ExtractedTeacher[]>([]);
   const [fileName, setFileName] = useState('');
+  const [repStats, setRepStats] = useState<{
+    replacements: number;
+    permanent: number;
+    cancellations: number;
+    skipped: number;
+    colorsRead: boolean;
+  } | null>(null);
 
   const [parsing, setParsing] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -61,11 +72,14 @@ function AdminImportPageInner() {
     setParsing(true);
     try {
       const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: 'array' });
 
-      let result: ParseResult;
+      let parsedLessons: ParsedLesson[] = [];
+      let parseErrors: string[] = [];
+      let parseConflicts: string[] = [];
+
       if (importKind === 'semester') {
         // Семестр: читаем ВСЕ листы книги — каждый лист это день/шаблон.
+        const wb = XLSX.read(buf, { type: 'array' });
         const sheets = wb.SheetNames.map((name) => ({
           name,
           rows: XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[name], {
@@ -74,26 +88,53 @@ function AdminImportPageInner() {
             blankrows: true,
           }),
         }));
-        result = parseSemesterWorkbook(sheets);
+        const result = parseSemesterWorkbook(sheets);
+        parsedLessons = result.items;
+        parseErrors = result.errors;
+        parseConflicts = result.conflicts;
+        setRepStats(null);
       } else {
-        // Замены на дату: только первый лист.
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        result = parseScheduleMatrix(
-          XLSX.utils.sheet_to_json<unknown[]>(ws, {
-            header: 1,
-            defval: '',
-            blankrows: true,
-          }),
-          { isReplacement: true }
-        );
+        // Замены на дату: умный парсер с распознаванием цветов ячеек (ExcelJS)
+        const result = await parseReplacementsWorkbook(buf, {
+          fileName: file.name,
+          date: date || undefined,
+          weekType: weekType || undefined,
+        });
+
+        if (result.date && !date) {
+          setDate(result.date);
+        }
+        if (result.weekType) {
+          setWeekType(result.weekType);
+        }
+
+        parsedLessons = result.rows.map((r) => ({
+          day_week: r.day_week,
+          lesson: r.lesson,
+          group_name: r.group_name,
+          subject: r.subject,
+          teacher: r.teacher,
+          cabinet: r.cabinet,
+          type: r.type,
+        }));
+        parseErrors = result.errors;
+        parseConflicts = [];
+        setRepStats({
+          replacements: result.replacementsCount,
+          permanent: result.permanentCount,
+          cancellations: result.cancellationsCount,
+          skipped: result.skippedCount,
+          colorsRead: result.colorsRead,
+        });
       }
-      setItems(result.items);
-      setErrors(result.errors);
-      setConflicts(result.conflicts);
+
+      setItems(parsedLessons);
+      setErrors(parseErrors);
+      setConflicts(parseConflicts);
 
       // Новые преподаватели: извлекаем из распознанных строк и вычитаем
       // уже существующих в таблице teachers (сравнение без учёта регистра).
-      const extracted = extractTeachers(result.items);
+      const extracted = extractTeachers(parsedLessons);
       const supabase = createClient();
       const { data: existingRows } = await supabase
         .from('teachers')
@@ -106,7 +147,7 @@ function AdminImportPageInner() {
         extracted.filter((t) => !existingNames.has(t.full_name.toLowerCase()))
       );
       setFileName(file.name);
-      if (result.items.length === 0) {
+      if (parsedLessons.length === 0) {
         setParseMsg('Не удалось распознать ни одной строки. Проверьте формат файла.');
       }
     } catch {
@@ -194,6 +235,7 @@ function AdminImportPageInner() {
           teacher: it.teacher || null,
           cabinet: it.cabinet || null,
           type: it.type || 'замена',
+          valid_until: null,
         }));
 
         const { error: insErr } = await supabase
@@ -217,6 +259,7 @@ function AdminImportPageInner() {
           cabinet: it.cabinet || null,
           change_type: it.type || 'замена',
           note: '',
+          valid_until: null,
         }));
         const { error: repInsErr } = await supabase
           .from('replacements')
@@ -233,14 +276,21 @@ function AdminImportPageInner() {
         });
         if (logErr) throw new Error('Расписание записано, но журнал импорта не сохранился.');
 
-        setOkMsg(
-          `Опубликовано строк: ${items.length} (${weekType}, ${date}). Ошибок разбора: ${errors.length}.`
-        );
+        if (repStats) {
+          setOkMsg(
+            `Опубликовано строк: ${items.length} (${weekType}, ${date}) · Замен: ${repStats.replacements} · Постоянных: ${repStats.permanent} · Отмен: ${repStats.cancellations}.`
+          );
+        } else {
+          setOkMsg(
+            `Опубликовано строк: ${items.length} (${weekType}, ${date}). Ошибок разбора: ${errors.length}.`
+          );
+        }
       }
       setItems([]);
       setErrors([]);
       setConflicts([]);
       setNewTeachers([]);
+      setRepStats(null);
       setFile(null);
       setFileName('');
     } catch (e) {
@@ -294,6 +344,7 @@ function AdminImportPageInner() {
                   setItems([]);
                   setErrors([]);
                   setConflicts([]);
+                  setRepStats(null);
                 }}
               />
               Замены на дату
@@ -308,6 +359,7 @@ function AdminImportPageInner() {
                   setItems([]);
                   setErrors([]);
                   setConflicts([]);
+                  setRepStats(null);
                 }}
               />
               Семестр (недельный шаблон)
@@ -324,7 +376,15 @@ function AdminImportPageInner() {
               id="imp-file"
               type="file"
               accept=".xlsx,.xls"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                setFile(f);
+                if (f && importKind === 'date') {
+                  const meta = parseMetaFromFileName(f.name);
+                  if (meta.date && !date) setDate(meta.date);
+                  if (meta.weekType) setWeekType(meta.weekType);
+                }
+              }}
               className="input file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700"
             />
           </div>
@@ -421,20 +481,41 @@ function AdminImportPageInner() {
       {items.length > 0 && (
         <div className="card p-4 sm:p-5">
           <h2 className="text-lg font-bold text-[var(--text)]">Предпросмотр</h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 text-center">
-              <p className="text-2xl font-extrabold text-indigo-600">{items.length}</p>
-              <p className="text-xs text-[var(--text-muted)]">распознанных строк</p>
+          {repStats ? (
+            <div className="mt-3 grid gap-3 sm:grid-cols-4">
+              <div className="rounded-lg bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/40 p-3 text-center">
+                <p className="text-2xl font-extrabold text-indigo-500">{repStats.replacements}</p>
+                <p className="text-xs text-[var(--text-muted)]">Замен на день</p>
+              </div>
+              <div className="rounded-lg bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 p-3 text-center">
+                <p className="text-2xl font-extrabold text-amber-500">{repStats.permanent}</p>
+                <p className="text-xs text-[var(--text-muted)]">Постоянных изменений</p>
+              </div>
+              <div className="rounded-lg bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 p-3 text-center">
+                <p className="text-2xl font-extrabold text-rose-500">{repStats.cancellations}</p>
+                <p className="text-xs text-[var(--text-muted)]">Отмен пар</p>
+              </div>
+              <div className="rounded-lg bg-slate-50 dark:bg-slate-900 border border-[var(--border)] p-3 text-center">
+                <p className="text-2xl font-extrabold text-[var(--text-muted)]">{repStats.skipped}</p>
+                <p className="text-xs text-[var(--text-muted)]">Пропущено белых (базовых)</p>
+              </div>
             </div>
-            <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 text-center">
-              <p className="text-2xl font-extrabold text-amber-600">{errors.length}</p>
-              <p className="text-xs text-[var(--text-muted)]">ошибок разбора</p>
+          ) : (
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 text-center">
+                <p className="text-2xl font-extrabold text-indigo-600">{items.length}</p>
+                <p className="text-xs text-[var(--text-muted)]">распознанных строк</p>
+              </div>
+              <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 text-center">
+                <p className="text-2xl font-extrabold text-amber-600">{errors.length}</p>
+                <p className="text-xs text-[var(--text-muted)]">ошибок разбора</p>
+              </div>
+              <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 text-center">
+                <p className="text-2xl font-extrabold text-rose-600">{conflicts.length}</p>
+                <p className="text-xs text-[var(--text-muted)]">конфликтов значений</p>
+              </div>
             </div>
-            <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-3 text-center">
-              <p className="text-2xl font-extrabold text-rose-600">{conflicts.length}</p>
-              <p className="text-xs text-[var(--text-muted)]">конфликтов значений</p>
-            </div>
-          </div>
+          )}
 
           {newTeachers.length > 0 && (
             <div className="mt-4 rounded-lg bg-indigo-50 p-3">
@@ -502,7 +583,7 @@ function AdminImportPageInner() {
           )}
 
           <h3 className="mt-4 text-sm font-bold text-[var(--text)]">
-            Примеры распознанных строк
+            Примеры распознанных строк (первые 10)
           </h3>
           <div className="mt-1.5 overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
@@ -518,18 +599,22 @@ function AdminImportPageInner() {
                 </tr>
               </thead>
               <tbody>
-                {items.slice(0, 15).map((it, i) => (
+                {items.slice(0, 10).map((it, i) => (
                   <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
                     <td className="px-2 py-1.5">{it.day_week}</td>
                     <td className="px-2 py-1.5">{it.lesson}</td>
                     <td className="px-2 py-1.5">{it.group_name}</td>
                     <td className="px-2 py-1.5">
-                      {it.type === 'отмена' ? (
-                        <span className="badge bg-red-500/20 text-red-400 border border-red-500/30">
+                      {it.type === 'permanent' ? (
+                        <span className="badge bg-amber-500/20 text-amber-500 dark:text-amber-400 border border-amber-500/30">
+                          постоянно
+                        </span>
+                      ) : it.type === 'отмена' ? (
+                        <span className="badge bg-red-500/20 text-red-500 dark:text-red-400 border border-red-500/30">
                           отмена
                         </span>
                       ) : (
-                        <span className="badge bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                        <span className="badge bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-500/20">
                           замена
                         </span>
                       )}
@@ -542,9 +627,9 @@ function AdminImportPageInner() {
               </tbody>
             </table>
           </div>
-          {items.length > 15 && (
+          {items.length > 10 && (
             <p className="mt-1 text-xs text-[var(--text-muted)]">
-              Показаны первые 15 из {items.length} строк — публикуются все.
+              Показаны первые 10 из {items.length} строк — публикуются все.
             </p>
           )}
         </div>

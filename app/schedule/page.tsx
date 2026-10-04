@@ -84,7 +84,7 @@ export default async function SchedulePage({
     // Шаблон недели и замены на дату — параллельно, затем слияние:
     // замена перекрывает шаблонную пару с тем же номером пары и группой,
     // пары без замен остаются из шаблона.
-    const [tplRes, datedRes] = await Promise.all([
+    const [tplRes, datedRes, permRes] = await Promise.all([
       supabase
         .from('schedule_rows')
         .select('*')
@@ -98,11 +98,20 @@ export default async function SchedulePage({
         .eq('group_name', group)
         .eq('date', selectedDate)
         .order('lesson', { ascending: true }),
+      supabase
+        .from('schedule_rows')
+        .select('*')
+        .eq('group_name', group)
+        .eq('type', 'permanent')
+        .lte('date', selectedDate)
+        .order('date', { ascending: false }),
     ]);
     const tpl = (tplRes.data as ScheduleRow[] | null) ?? [];
     const dated = (datedRes.data as ScheduleRow[] | null) ?? [];
-    rows = mergeScheduleRows(tpl, dated);
-    if (dated.length > 0) source = 'replacements';
+    const perm = (permRes.data as ScheduleRow[] | null) ?? [];
+    const allReplacements = [...dated, ...perm];
+    rows = mergeScheduleRows(tpl, allReplacements, undefined, selectedDate);
+    if (allReplacements.length > 0) source = 'replacements';
   }
 
   const dayLabel = capitalize(rows[0]?.day_week || weekdayRu(selectedDate));
@@ -221,7 +230,28 @@ export default async function SchedulePage({
                     <td className="whitespace-nowrap px-3 py-2.5 text-xs text-[var(--text-muted)]">
                       {timeByLesson.get(r.lesson) || '—'}
                     </td>
-                    <td className="px-3 py-2.5 font-medium text-[var(--text)]">{r.subject}</td>
+                    <td className="px-3 py-2.5 font-medium text-[var(--text)]">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span>{r.subject}</span>
+                        {r.type === 'permanent' && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                            title={`Постоянное изменение с ${formatDate(r.date)}`}
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                            постоянно
+                          </span>
+                        )}
+                        {r.type === 'замена' && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20"
+                            title="Замена на этот день"
+                          >
+                            замена
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-3 py-2.5">{r.teacher}</td>
                     <td className="px-3 py-2.5">{r.cabinet}</td>
                   </tr>

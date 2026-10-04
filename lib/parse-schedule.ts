@@ -9,7 +9,7 @@ export interface ParsedLesson {
   subject: string;
   teacher: string;
   cabinet: string;
-  type?: 'замена' | 'отмена';
+  type?: 'замена' | 'отмена' | 'permanent';
 }
 
 export interface ParseResult {

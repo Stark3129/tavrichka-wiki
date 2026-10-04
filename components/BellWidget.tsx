@@ -150,7 +150,7 @@ export default function BellWidget({
     const supabase = createClient();
     const day = weekdayRu(todayIso);
 
-    // Параллельно загружаем недельный шаблон и замены на сегодня
+    // Параллельно загружаем недельный шаблон, замены на сегодня и постоянные изменения
     Promise.all([
       supabase
         .from('schedule_rows')
@@ -165,10 +165,20 @@ export default function BellWidget({
         .eq('group_name', myGroup)
         .eq('date', todayIso)
         .order('lesson', { ascending: true }),
-    ]).then(([tplRes, datedRes]) => {
+      supabase
+        .from('schedule_rows')
+        .select('*')
+        .eq('group_name', myGroup)
+        .eq('type', 'permanent')
+        .lte('date', todayIso)
+        .order('date', { ascending: false }),
+    ]).then(([tplRes, datedRes, permRes]) => {
       const tpl = (tplRes.data as ScheduleRow[] | null) ?? [];
       const dated = (datedRes.data as ScheduleRow[] | null) ?? [];
-      const todayRows = mergeScheduleRows(tpl, dated).sort((a, b) => a.lesson - b.lesson);
+      const perm = (permRes.data as ScheduleRow[] | null) ?? [];
+      const todayRows = mergeScheduleRows(tpl, [...dated, ...perm], undefined, todayIso).sort(
+        (a, b) => a.lesson - b.lesson
+      );
 
       setGroupHasLessonsToday(todayRows.length > 0);
 
@@ -391,6 +401,16 @@ export default function BellWidget({
                 )}
                 {nextLesson.teacher ? ` (${nextLesson.teacher})` : ''}
               </span>
+              {nextLesson.type === 'permanent' && (
+                <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                  постоянно
+                </span>
+              )}
+              {nextLesson.type === 'замена' && (
+                <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                  замена
+                </span>
+              )}
             </div>
           ) : groupHasLessonsToday ? (
             <div className="flex items-center gap-1.5 text-[var(--text-muted)]">

@@ -62,12 +62,20 @@ export default function ReplacementTable({
 
   const filtered = useMemo(() => {
     const t = teacher.trim().toLowerCase();
-    return rows.filter(
-      (r) =>
-        (!date || r.r_date === date) &&
+    return rows.filter((r) => {
+      const isDateMatch =
+        !date ||
+        r.r_date === date ||
+        (r.change_type === 'permanent' &&
+          r.r_date <= date &&
+          (!r.valid_until || r.valid_until.slice(0, 10) >= date));
+
+      return (
+        isDateMatch &&
         (!group || r.group_name === group) &&
         (!t || r.teacher.toLowerCase().includes(t))
-    );
+      );
+    });
   }, [rows, date, group, teacher]);
 
   return (
@@ -177,6 +185,7 @@ export default function ReplacementTable({
             <tbody>
               {filtered.map((r) => {
                 const isCancelled = r.change_type === 'отмена';
+                const isPermanent = r.change_type === 'permanent';
                 return (
                   <tr
                     key={r.id}
@@ -193,6 +202,17 @@ export default function ReplacementTable({
                       {isCancelled ? (
                         <span className="badge bg-red-500/20 text-red-400 border border-red-500/30">
                           отмена
+                        </span>
+                      ) : isPermanent ? (
+                        <span
+                          className="badge bg-amber-500/20 text-amber-500 dark:text-amber-400 border border-amber-500/30"
+                          title={
+                            r.valid_until
+                              ? `Постоянное изменение (до ${formatDate(r.valid_until)})`
+                              : 'Постоянное изменение'
+                          }
+                        >
+                          постоянно
                         </span>
                       ) : (
                         <span className="badge bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">

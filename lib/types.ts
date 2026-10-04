@@ -18,6 +18,7 @@ export interface Replacement {
   teacher: string;
   cabinet: string;
   note: string;
+  valid_until?: string | null;
   created_at: string;
 }
 
@@ -31,7 +32,8 @@ export interface ScheduleRow {
   subject: string;
   teacher: string;
   cabinet: string;
-  type?: 'замена' | 'отмена' | string;
+  type?: 'замена' | 'отмена' | 'permanent' | string;
+  valid_until?: string | null;
   created_at: string;
 }
 

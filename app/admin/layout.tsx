@@ -7,6 +7,7 @@ export const metadata = { title: 'Админ-зона' };
 const NAV = [
   { href: '/admin', label: 'Дашборд', roles: ['admin', 'moderator'] },
   { href: '/admin/import', label: 'Импорт', roles: ['admin'] },
+  { href: '/admin/permanent', label: 'Постоянные', roles: ['admin'] },
   { href: '/admin/posts', label: 'Посты', roles: ['admin', 'moderator'] },
   { href: '/admin/teachers', label: 'Преподаватели', roles: ['admin', 'moderator'] },
   { href: '/admin/map', label: 'Карта', roles: ['admin'] },
