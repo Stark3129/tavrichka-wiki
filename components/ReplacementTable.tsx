@@ -4,6 +4,16 @@ import { useMemo, useState } from 'react';
 import { formatDate } from '@/lib/utils';
 import type { Replacement } from '@/lib/types';
 
+function todayIso(): string {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Moscow' }).format(new Date());
+}
+
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function ReplacementTable({
   rows,
   updatedAt,
@@ -11,7 +21,17 @@ export default function ReplacementTable({
   rows: Replacement[];
   updatedAt: string;
 }) {
-  const [date, setDate] = useState('');
+  const today = todayIso();
+  const tomorrow = addDaysIso(today, 1);
+
+  // Фильтр по умолчанию: сегодня, если замен нет — завтра, иначе последняя доступная дата
+  const initialDate = useMemo(() => {
+    if (rows.some((r) => r.r_date === today)) return today;
+    if (rows.some((r) => r.r_date === tomorrow)) return tomorrow;
+    return rows[0]?.r_date ?? '';
+  }, [rows, today, tomorrow]);
+
+  const [date, setDate] = useState(initialDate);
   const [group, setGroup] = useState('');
   const [teacher, setTeacher] = useState('');
 
@@ -90,7 +110,31 @@ export default function ReplacementTable({
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-[var(--text-muted)]">Найдено замен: {filtered.length}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <p className="text-xs text-[var(--text-muted)]">Найдено замен: {filtered.length}</p>
+        {(date || group || teacher) && (
+          <button
+            type="button"
+            onClick={() => {
+              setDate('');
+              setGroup('');
+              setTeacher('');
+            }}
+            className="btn btn-outline !px-2.5 !py-1 text-xs"
+          >
+            Сбросить / показать все
+          </button>
+        )}
+        {date !== today && (
+          <button
+            type="button"
+            onClick={() => setDate(today)}
+            className="btn btn-outline !px-2.5 !py-1 text-xs"
+          >
+            Сегодня ({formatDate(today)})
+          </button>
+        )}
+      </div>
 
       {filtered.length === 0 ? (
         <p className="mt-4 rounded-lg bg-slate-50 dark:bg-slate-900 p-6 text-center text-sm text-[var(--text-muted)]">
@@ -123,7 +167,7 @@ export default function ReplacementTable({
                   <td className="px-2 py-2">
                     <span className="badge bg-indigo-50 text-indigo-700">{r.change_type}</span>
                   </td>
-                  <td className="px-2 py-2">{r.teacher}</td>
+                  <td className="whitespace-nowrap px-2 py-2">{r.teacher}</td>
                   <td className="px-2 py-2">{r.cabinet}</td>
                   <td className="px-2 py-2 text-[var(--text-muted)]">{r.note}</td>
                 </tr>

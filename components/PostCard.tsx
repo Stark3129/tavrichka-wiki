@@ -6,6 +6,7 @@ import { cn, formatDate } from '@/lib/utils';
 import type { Comment, Post } from '@/lib/types';
 import Comments from '@/components/Comments';
 import LikeButton from '@/components/LikeButton';
+import MarkdownContent from '@/components/MarkdownContent';
 
 const TYPE_META: Record<
   Post['type'],
@@ -53,9 +54,10 @@ export default function PostCard({
         </h2>
 
         {post.content && (
-          <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-[var(--text-muted)]">
-            {post.content}
-          </p>
+          <MarkdownContent
+            content={post.content}
+            className="mt-2 text-sm text-[var(--text-muted)]"
+          />
         )}
       </div>
 

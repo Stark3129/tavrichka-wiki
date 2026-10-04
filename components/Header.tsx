@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { User } from '@supabase/supabase-js';
-import { Menu, Search, X } from 'lucide-react';
+import { Menu, Search, User as UserIcon, X } from 'lucide-react';
 import { logout } from '@/lib/actions';
 import { cn } from '@/lib/utils';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -49,7 +49,7 @@ export default function Header({
         </Link>
 
         {/* Полная навигация — только на lg+ (одна строка) */}
-        <nav className="hidden items-center gap-2 text-sm font-medium lg:flex">
+        <nav className="hidden items-center gap-1.5 text-sm font-medium lg:flex xl:gap-2">
           {NAV.map((item) => {
             const active =
               item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
@@ -58,7 +58,7 @@ export default function Header({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'whitespace-nowrap rounded-lg px-3 py-1.5 transition-colors',
+                  'whitespace-nowrap rounded-lg px-2.5 py-1.5 transition-colors xl:px-3',
                   active
                     ? 'bg-white/20 text-white'
                     : 'text-white/90 hover:bg-white/10 hover:text-white'
@@ -72,7 +72,7 @@ export default function Header({
           {isAdmin && (
             <Link
               href="/admin"
-              className="rounded-lg px-3 py-1.5 font-semibold whitespace-nowrap text-amber-200 transition-colors hover:bg-white/10 hover:text-amber-100"
+              className="rounded-lg px-2.5 py-1.5 font-semibold whitespace-nowrap text-amber-200 transition-colors hover:bg-white/10 hover:text-amber-100 xl:px-3"
             >
               Админ
             </Link>
@@ -95,19 +95,30 @@ export default function Header({
 
           {user ? (
             <>
+              {/* На lg (1024-1280px) компактная кнопка профиля без текста email */}
               <Link
                 href="/profile"
-                className="hidden max-w-[150px] truncate text-sm text-white/90 hover:text-white transition md:block"
+                title={user.email ?? 'Профиль'}
+                aria-label="Профиль"
+                className="btn !px-2.5 !rounded-lg !border-white/30 !bg-white/10 !text-white xl:hidden"
+              >
+                <UserIcon className="h-4 w-4" />
+              </Link>
+              {/* На xl+ показываем усечённый email */}
+              <Link
+                href="/profile"
+                title={user.email ?? 'Профиль'}
+                className="hidden max-w-[120px] truncate text-sm text-white/90 hover:text-white transition xl:block"
               >
                 {user.email}
               </Link>
               {userRole === 'admin' && (
-                <span className="hidden rounded bg-purple-500/30 px-1.5 py-0.5 text-xs text-purple-100 md:inline-block">
+                <span className="hidden rounded bg-purple-500/30 px-1.5 py-0.5 text-xs text-purple-100 xl:inline-block">
                   Админ
                 </span>
               )}
               {userRole === 'moderator' && (
-                <span className="hidden rounded bg-blue-500/30 px-1.5 py-0.5 text-xs text-blue-100 md:inline-block">
+                <span className="hidden rounded bg-blue-500/30 px-1.5 py-0.5 text-xs text-blue-100 xl:inline-block">
                   Модер
                 </span>
               )}

@@ -33,19 +33,54 @@ export default function SearchModal() {
     return () => window.removeEventListener('keydown', onKey);
   }, [setOpen]);
 
-  // Сброс при открытии + автофокус.
+  // Сброс при открытии + надёжный автофокус и блокировка скролла фона
   useEffect(() => {
     if (open) {
       setQuery('');
-      requestAnimationFrame(() => inputRef.current?.focus());
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+
+      // Таймер и RAF для гарантии установки фокуса после маунта и анимации
+      const focusTimer = setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 50);
+
+      return () => {
+        clearTimeout(focusTimer);
+        document.body.style.overflow = prevOverflow;
+      };
     }
   }, [open]);
 
-  // Escape — закрыть.
+  // Escape — закрыть + ловушка клавиш (чтобы ввод не улетал в формы под модалкой).
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setOpen(false);
+      }
+      // Ловушка фокуса при Tab
+      if (e.key === 'Tab') {
+        const modal = document.querySelector('[role="dialog"]');
+        if (modal) {
+          const focusable = modal.querySelectorAll<HTMLElement>(
+            'input, button, a[href], [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusable.length > 0) {
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+              e.preventDefault();
+              last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+              e.preventDefault();
+              first.focus();
+            }
+          }
+        }
+      }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

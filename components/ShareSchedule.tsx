@@ -9,6 +9,12 @@ import type { ScheduleRow } from '@/lib/types';
 // Тяжёлые библиотеки экспорта грузим лениво и только на клиенте.
 const ScheduleExport = dynamic(() => import('@/components/ScheduleExport'), {
   ssr: false,
+  loading: () => (
+    <div className="flex items-center gap-2 py-2 text-sm text-[var(--text-muted)]">
+      <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+      <span>Подготовка экспорта…</span>
+    </div>
+  ),
 });
 
 /**

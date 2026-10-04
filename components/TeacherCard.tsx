@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { deduplicateSubjects, isNonEmpty } from '@/lib/utils';
 import type { Teacher } from '@/lib/types';
 
 /** Инициалы для заглушки: первые буквы первых двух слов ФИО. */
@@ -37,13 +38,17 @@ export default function TeacherCard({ teacher }: { teacher: Teacher }) {
         )}
         <div className="min-w-0">
           <h3 className="text-base font-bold text-[var(--text)]">{teacher.full_name}</h3>
-          <p className="mt-1 line-clamp-2 break-words text-sm text-[var(--text-muted)]">
-            {teacher.subject}
-          </p>
+          {deduplicateSubjects(teacher.subject) && (
+            <p className="mt-1 line-clamp-2 break-words text-sm text-[var(--text-muted)]">
+              {deduplicateSubjects(teacher.subject)}
+            </p>
+          )}
         </div>
       </div>
-      <p className="mt-2 text-sm text-[var(--text-muted)]">Кабинет: {teacher.cabinet || '—'}</p>
-      {teacher.email && (
+      {isNonEmpty(teacher.cabinet) && (
+        <p className="mt-2 text-sm text-[var(--text-muted)]">Кабинет: {teacher.cabinet}</p>
+      )}
+      {isNonEmpty(teacher.email) && (
         <a
           href={`mailto:${teacher.email}`}
           className="mt-1 block truncate text-sm text-[var(--accent)] hover:underline"

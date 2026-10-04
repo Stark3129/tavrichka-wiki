@@ -6,23 +6,31 @@
  * Даты без времени парсит вручную — без сдвига из-за часового пояса.
  * Возвращает пустую строку, если дату распознать не удалось.
  */
-export function formatDate(input: Date | string): string {
+export function formatDate(input: Date | string | null | undefined): string {
+  if (!input) return '';
   if (typeof input === 'string') {
-    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input.trim());
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})/.exec(input.trim());
     if (dateOnly) {
       return `${dateOnly[3]}.${dateOnly[2]}.${dateOnly[1]}`;
     }
-    const parsed = new Date(input);
-    if (Number.isNaN(parsed.getTime())) return '';
-    return formatDate(parsed);
   }
 
-  if (Number.isNaN(input.getTime())) return '';
+  const d = typeof input === 'string' ? new Date(input) : input;
+  if (!d || Number.isNaN(d.getTime())) return '';
 
-  const dd = String(input.getDate()).padStart(2, '0');
-  const mm = String(input.getMonth() + 1).padStart(2, '0');
-  const yyyy = String(input.getFullYear());
-  return `${dd}.${mm}.${yyyy}`;
+  // Фиксированный часовой пояс Europe/Moscow для полной идентичности SSR и браузера
+  return new Intl.DateTimeFormat('ru-RU', {
+    timeZone: 'Europe/Moscow',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(d);
+}
+
+/** Первую букву строки делает заглавной */
+export function capitalize(str?: string | null): string {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 /**
@@ -33,4 +41,27 @@ export function cn(
   ...classes: Array<string | number | false | null | undefined>
 ): string {
   return classes.filter(Boolean).join(' ');
+}
+
+/** Дедуплицирует список предметов с сохранением регистра первого вхождения. */
+export function deduplicateSubjects(subject: string | null | undefined): string {
+  if (!subject) return '';
+  const parts = subject.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const part of parts) {
+    const lower = part.toLowerCase();
+    if (!seen.has(lower)) {
+      seen.add(lower);
+      unique.push(part);
+    }
+  }
+  return unique.join(', ');
+}
+
+/** Проверяет, что строка содержит осмысленное значение (не пустая и не прочерк). */
+export function isNonEmpty(val: string | null | undefined): boolean {
+  if (!val) return false;
+  const trimmed = val.trim();
+  return trimmed !== '' && trimmed !== '—' && trimmed !== '-' && trimmed !== 'null';
 }

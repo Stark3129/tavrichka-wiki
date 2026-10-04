@@ -13,12 +13,12 @@ export default function Breadcrumbs({ items }: { items: Crumb[] }) {
   const crumbs: Crumb[] = [{ label: 'Главная', href: '/' }, ...items];
 
   return (
-    <nav aria-label="Хлебные крошки" className="text-sm text-[var(--text-muted)]">
+    <nav aria-label="Хлебные крошки" className="flex flex-wrap items-center gap-2 text-sm text-[var(--text-muted)]">
       {crumbs.map((c, i) => {
         const isLast = i === crumbs.length - 1;
         return (
-          <span key={`${c.label}-${i}`} className="inline-flex items-center gap-1.5">
-            {i > 0 && <span aria-hidden="true">/</span>}
+          <span key={`${c.label}-${i}`} className="inline-flex items-center gap-2">
+            {i > 0 && <span aria-hidden="true" className="text-slate-400 dark:text-slate-600 select-none">/</span>}
             {c.href && !isLast ? (
               <Link href={c.href} className="hover:text-[var(--accent)] hover:underline">
                 {c.label}

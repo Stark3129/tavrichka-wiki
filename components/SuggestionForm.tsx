@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { createPost } from '@/lib/actions';
 
@@ -215,9 +216,15 @@ export default function SuggestionForm() {
 
         {error && <p className="text-sm text-rose-600">{error}</p>}
         {sent && (
-          <p className="text-sm font-medium text-emerald-600">
-            Пост отправлен на модерацию!
-          </p>
+          <div className="flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-50 p-3.5 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <div>
+              <p className="font-semibold">Готово!</p>
+              <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-300">
+                Ваш пост отправлен модераторам и появится в ленте после одобрения.
+              </p>
+            </div>
+          </div>
         )}
 
         <button

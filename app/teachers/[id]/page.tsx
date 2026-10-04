@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import EditSuggestionForm from '@/components/EditSuggestionForm';
 import Breadcrumbs from '@/components/Breadcrumbs';
-import { formatDate } from '@/lib/utils';
+import { deduplicateSubjects, formatDate, isNonEmpty } from '@/lib/utils';
 import { mergeScheduleRows } from '@/lib/schedule-merge';
 import type { ScheduleRow, Teacher } from '@/lib/types';
 
@@ -145,35 +145,43 @@ export default async function TeacherPage({
             )}
             <div className="min-w-0">
               <h1 className="text-2xl font-extrabold text-[var(--text)]">{teacher.full_name}</h1>
-              <span className="badge mt-2 bg-indigo-50 text-indigo-700">{teacher.subject}</span>
+              {deduplicateSubjects(teacher.subject) && (
+                <span className="badge mt-2 bg-indigo-50 text-indigo-700">
+                  {deduplicateSubjects(teacher.subject)}
+                </span>
+              )}
             </div>
           </div>
 
-          <dl className="mt-4 space-y-2 text-sm">
-            <div className="flex gap-2">
-              <dt className="w-32 shrink-0 font-medium text-[var(--text-muted)]">Кабинет</dt>
-              <dd className="text-[var(--text)]">{teacher.cabinet || '—'}</dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="w-32 shrink-0 font-medium text-[var(--text-muted)]">Почта</dt>
-              <dd>
-                {teacher.email ? (
-                  <a
-                    href={`mailto:${teacher.email}`}
-                    className="text-indigo-600 hover:underline"
-                  >
-                    {teacher.email}
-                  </a>
-                ) : (
-                  '—'
-                )}
-              </dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="w-32 shrink-0 font-medium text-[var(--text-muted)]">Консультации</dt>
-              <dd className="text-[var(--text)]">{teacher.consultation || '—'}</dd>
-            </div>
-          </dl>
+          {(isNonEmpty(teacher.cabinet) || isNonEmpty(teacher.email) || isNonEmpty(teacher.consultation)) && (
+            <dl className="mt-4 space-y-2 text-sm">
+              {isNonEmpty(teacher.cabinet) && (
+                <div className="flex gap-2">
+                  <dt className="w-32 shrink-0 font-medium text-[var(--text-muted)]">Кабинет</dt>
+                  <dd className="text-[var(--text)]">{teacher.cabinet}</dd>
+                </div>
+              )}
+              {isNonEmpty(teacher.email) && (
+                <div className="flex gap-2">
+                  <dt className="w-32 shrink-0 font-medium text-[var(--text-muted)]">Почта</dt>
+                  <dd>
+                    <a
+                      href={`mailto:${teacher.email}`}
+                      className="text-indigo-600 hover:underline"
+                    >
+                      {teacher.email}
+                    </a>
+                  </dd>
+                </div>
+              )}
+              {isNonEmpty(teacher.consultation) && (
+                <div className="flex gap-2">
+                  <dt className="w-32 shrink-0 font-medium text-[var(--text-muted)]">Консультации</dt>
+                  <dd className="text-[var(--text)]">{teacher.consultation}</dd>
+                </div>
+              )}
+            </dl>
+          )}
 
           {teacher.description && (
             <p className="mt-4 whitespace-pre-line border-t border-slate-100 dark:border-slate-800 pt-4 text-sm leading-relaxed text-[var(--text)]">

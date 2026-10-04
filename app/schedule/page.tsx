@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { formatDate } from '@/lib/utils';
+import { capitalize, formatDate } from '@/lib/utils';
 import { mergeScheduleRows } from '@/lib/schedule-merge';
 import ShareSchedule from '@/components/ShareSchedule';
-import type { ScheduleRow } from '@/lib/types';
+import ScheduleGroupSelect from '@/components/ScheduleGroupSelect';
+import type { LessonTime, ScheduleRow } from '@/lib/types';
 
 export const metadata = { title: 'Расписание' };
 
@@ -61,6 +62,21 @@ export default async function SchedulePage({
   }
   const groups = Array.from(groupSet).sort((a, b) => a.localeCompare(b, 'ru'));
 
+  // Звонки (время пар)
+  const { data: timesData } = await supabase
+    .from('lesson_times')
+    .select('lesson, start_time, end_time')
+    .order('lesson', { ascending: true });
+  const lessonTimes = (timesData as LessonTime[] | null) ?? [];
+  const timeByLesson = new Map<number, string>();
+  for (const t of lessonTimes) {
+    const s = t.start_time?.slice(0, 5);
+    const e = t.end_time?.slice(0, 5);
+    if (s && e) {
+      timeByLesson.set(t.lesson, `${s}–${e}`);
+    }
+  }
+
   let rows: ScheduleRow[] = [];
   let source: 'replacements' | 'template' = 'template';
   if (group) {
@@ -89,7 +105,7 @@ export default async function SchedulePage({
     if (dated.length > 0) source = 'replacements';
   }
 
-  const dayLabel = rows[0]?.day_week || weekdayRu(selectedDate);
+  const dayLabel = capitalize(rows[0]?.day_week || weekdayRu(selectedDate));
 
   return (
     <div className="space-y-4">
@@ -121,14 +137,7 @@ export default async function SchedulePage({
             <label htmlFor="sch-group" className="label">
               Группа
             </label>
-            <select id="sch-group" name="group" defaultValue={group} className="input">
-              <option value="">— выберите группу —</option>
-              {groups.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
+            <ScheduleGroupSelect groups={groups} defaultValue={group} />
           </div>
           <div>
             <label htmlFor="sch-date" className="label">
@@ -189,6 +198,7 @@ export default async function SchedulePage({
                 <tr className="border-b border-[var(--border)] bg-gradient-to-r from-cyan-50 to-blue-50 text-left text-xs uppercase tracking-wide text-[var(--text-muted)] dark:from-cyan-950/50 dark:to-blue-950/50">
                   <th className="px-3 py-2.5">День</th>
                   <th className="px-3 py-2.5">Пара</th>
+                  <th className="px-3 py-2.5">Время</th>
                   <th className="px-3 py-2.5">Предмет</th>
                   <th className="px-3 py-2.5">Преподаватель</th>
                   <th className="px-3 py-2.5">Аудитория</th>
@@ -201,12 +211,15 @@ export default async function SchedulePage({
                     className="border-b border-[var(--border)] transition-colors hover:bg-cyan-50/50 dark:hover:bg-cyan-950/30"
                   >
                     <td className="whitespace-nowrap px-3 py-2.5">
-                      {r.day_week || dayLabel}
+                      {capitalize(r.day_week) || dayLabel}
                     </td>
                     <td className="px-3 py-2.5">
                       <span className="inline-flex items-center rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-2.5 py-1 text-xs font-semibold text-white">
                         {r.lesson}
                       </span>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-xs text-[var(--text-muted)]">
+                      {timeByLesson.get(r.lesson) || '—'}
                     </td>
                     <td className="px-3 py-2.5 font-medium text-[var(--text)]">{r.subject}</td>
                     <td className="px-3 py-2.5">{r.teacher}</td>

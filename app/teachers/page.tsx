@@ -48,7 +48,7 @@ export default async function TeachersPage({
             defaultValue={q}
             placeholder="ФИО или предмет…"
             aria-label="Поиск по ФИО и предмету"
-            className="input max-w-sm flex-1"
+            className="input max-w-sm flex-1 border-slate-300 bg-white dark:border-[var(--border)] dark:bg-[var(--bg-card)] shadow-xs"
           />
           <button type="submit" className="btn btn-primary">
             Найти

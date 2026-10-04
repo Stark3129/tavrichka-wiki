@@ -17,22 +17,44 @@ const CABINET_OVERRIDE: Record<string, string> = {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const CATEGORY_STYLES: Record<string, string> = {
+  'classroom': 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100',
   'аудитория': 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100',
+  'lab': 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
   'лаборатория': 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
+  'sport': 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
   'спорт': 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
+  'food': 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100',
   'столовая': 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100',
+  'admin': 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100',
+  'administration': 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100',
   'администрация': 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100',
+  'library': 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100',
   'библиотека': 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100',
+  'service': 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:bg-zinc-100',
+  'служебное': 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:bg-zinc-100',
+  'other': 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100',
+  'другое': 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100',
 };
 const CATEGORY_FALLBACK = 'bg-slate-50 dark:bg-slate-900 text-[var(--text)] border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800';
 
 const CATEGORY_LABELS: Record<string, string> = {
+  'classroom': 'Аудитория',
   'аудитория': 'Аудитории',
+  'lab': 'Лаборатория',
   'лаборатория': 'Лаборатории',
+  'sport': 'Спортзал',
   'спорт': 'Спорт',
+  'food': 'Столовая',
   'столовая': 'Столовая',
+  'admin': 'Администрация',
+  'administration': 'Администрация',
   'администрация': 'Администрация',
+  'library': 'Библиотека',
   'библиотека': 'Библиотека',
+  'service': 'Служебное',
+  'служебное': 'Служебное',
+  'other': 'Другое',
+  'другое': 'Другое',
 };
 
 /** Минуты от полуночи по московскому времени. */
@@ -115,6 +137,7 @@ export default function MapExplorer({
   const [extraCabinets, setExtraCabinets] = useState<string[]>([]);
   const [extraLoading, setExtraLoading] = useState(false);
   const [extraError, setExtraError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(() =>
     initialDate && DATE_RE.test(initialDate) ? initialDate : today
   );
@@ -138,39 +161,51 @@ export default function MapExplorer({
     setExtraLoading(true);
     setExtraError(false);
     const supabase = createClient();
-    supabase
-      .from('schedule_rows')
-      .select('cabinet')
-      .not('cabinet', 'is', null)
-      .limit(2000)
-      .then(({ data, error }) => {
-        // Кабинеты, уже покрытые картой этого корпуса, не дублируем.
-        // Сравниваем в нормализованном виде: «14» на схеме = «жд14» в расписании.
-        const covered = new Set(
-          objects
-            .flatMap((o) => [
-              o.room,
-              o.name,
-              CABINET_OVERRIDE[o.name] ?? o.name,
-            ])
-            .filter((x): x is string => Boolean(x))
-            .flatMap((x) => [x, normalizeCabinet(x, corpus)])
-        );
+    const covered = new Set(
+      objects
+        .flatMap((o) => [
+          o.room,
+          o.name,
+          CABINET_OVERRIDE[o.name] ?? o.name,
+        ])
+        .filter((x): x is string => Boolean(x))
+        .flatMap((x) => [x, normalizeCabinet(x, corpus)])
+    );
+
+    async function load() {
+      try {
+        const { data, error } = await supabase
+          .from('schedule_rows')
+          .select('cabinet')
+          .or('cabinet.ilike.жд%,cabinet.ilike.с/з%,cabinet.ilike.а/з%')
+          .limit(1000);
+
         const set = new Set<string>();
-        if (!error) {
-          (data as Array<{ cabinet: string }> | null ?? []).forEach((r) => {
+        if (!error && data) {
+          (data as Array<{ cabinet: string }>).forEach((r) => {
             const c = r.cabinet?.trim();
             if (c && EXTRA_CABINET_RE.test(c) && !covered.has(c)) set.add(c);
           });
         }
-        // Гарантия непустой сетки даже при ошибке запроса.
+        // Гарантия базовой сетки
         EXTRA_STATIC_CABINETS.forEach((c) => {
           if (!covered.has(c)) set.add(c);
         });
         setExtraCabinets(Array.from(set).sort(cabinetSort));
         setExtraError(Boolean(error));
         setExtraLoading(false);
-      });
+      } catch {
+        const set = new Set<string>();
+        EXTRA_STATIC_CABINETS.forEach((c) => {
+          if (!covered.has(c)) set.add(c);
+        });
+        setExtraCabinets(Array.from(set).sort(cabinetSort));
+        setExtraError(true);
+        setExtraLoading(false);
+      }
+    }
+
+    load();
   }, [corpus, objects]);
 
   // Фактический кабинет в расписании: выбранный кликом или объект карты.
@@ -420,6 +455,8 @@ export default function MapExplorer({
                 onClick={() => {
                   setActiveFloorId(f.id);
                   setSelectedId(null);
+                  setSelectedCabinet(null);
+                  setImageLoaded(false);
                 }}
                 className={cn(
                   'btn',
@@ -437,11 +474,24 @@ export default function MapExplorer({
               <div className="card p-4">
                 {activeFloor?.image_url ? (
                   <>
-                    <img
-                      src={activeFloor.image_url}
-                      alt={`${activeFloor.title} — схема этажа`}
-                      className="w-full rounded-lg border border-slate-100 dark:border-slate-800"
-                    />
+                    <div className="relative min-h-[320px] sm:min-h-[420px] w-full overflow-hidden rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
+                      {!imageLoaded && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 animate-pulse bg-slate-100 dark:bg-slate-900 text-sm text-[var(--text-muted)]">
+                          <div className="h-7 w-7 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+                          <span>Загрузка схемы этажа…</span>
+                        </div>
+                      )}
+                      <img
+                        key={activeFloor.image_url}
+                        src={activeFloor.image_url}
+                        alt={`${activeFloor.title} — схема этажа`}
+                        onLoad={() => setImageLoaded(true)}
+                        className={cn(
+                          'w-full rounded-lg transition-opacity duration-300',
+                          imageLoaded ? 'opacity-100' : 'opacity-0'
+                        )}
+                      />
+                    </div>
                     <a
                       href={activeFloor.image_url}
                       target="_blank"
@@ -483,7 +533,10 @@ export default function MapExplorer({
                     <button
                       key={o.id}
                       type="button"
-                      onClick={() => setSelectedId(o.id)}
+                      onClick={() => {
+                        setSelectedId(o.id);
+                        setSelectedCabinet(null);
+                      }}
                       className={cn(
                         'rounded-xl border px-3 py-1.5 text-sm font-medium transition-all duration-200',
                         o.id === selectedId
@@ -498,7 +551,7 @@ export default function MapExplorer({
                 </div>
               )}
             {/* Кабинеты из расписания, не отмеченные на схеме (жд*, с/з, а/з) */}
-            {corpus === 2 && (extraCabinets.length > 0 || extraLoading) && (
+            {corpus === 2 && (extraCabinets.length > 0 || extraLoading || extraError) && (
               <div className="card p-4">
                 <h3 className="text-sm font-bold text-[var(--text)]">
                   Кабинеты из расписания
@@ -509,10 +562,12 @@ export default function MapExplorer({
                 {extraLoading && (
                   <p className="mt-3 text-sm text-[var(--text-muted)]">Загружаем…</p>
                 )}
-                {extraError && !extraLoading && (
-                  <p className="mt-3 text-xs text-amber-600">
-                    Не удалось обновить список из расписания — показан базовый
-                    список кабинетов.
+                {extraError && !extraLoading && extraCabinets.length === 0 && (
+                  <p className="mt-3 text-sm text-red-500">Не удалось загрузить кабинеты.</p>
+                )}
+                {extraError && !extraLoading && extraCabinets.length > 0 && (
+                  <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+                    Не удалось загрузить кабинеты. Показан базовый список.
                   </p>
                 )}
                 {!extraLoading && extraCabinets.length > 0 && (
@@ -521,7 +576,10 @@ export default function MapExplorer({
                       <button
                         key={c}
                         type="button"
-                        onClick={() => setSelectedCabinet(c)}
+                        onClick={() => {
+                          setSelectedCabinet(c);
+                          setSelectedId(null);
+                        }}
                         className={cn(
                           'rounded-xl border px-3 py-1.5 text-sm font-medium transition-all duration-200',
                           c === selectedCabinet
