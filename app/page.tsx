@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import PostCard from '@/components/PostCard';
 import SuggestionForm from '@/components/SuggestionForm';
-import { cn, formatDate } from '@/lib/utils';
-import type { Post, Replacement } from '@/lib/types';
-import type { Comment } from '@/lib/types';
+import BellWidget from '@/components/BellWidget';
+import CompactReplacementsBanner from '@/components/CompactReplacementsBanner';
+import { cn } from '@/lib/utils';
+import type { Comment, LessonTime, Post, Replacement } from '@/lib/types';
 
 const TYPES = [
   { value: '', label: 'Все' },
@@ -42,12 +43,19 @@ export default async function HomePage({
   const { data: postsData, error: postsError } = await postsQuery;
   const posts = (postsData as Post[] | null) ?? [];
 
-  const { data: replacementsData } = await supabase
-    .from('replacements')
-    .select('*')
-    .eq('r_date', todayIso())
-    .order('lesson', { ascending: true });
-  const replacements = (replacementsData as Replacement[] | null) ?? [];
+  const [replacementsRes, timesRes] = await Promise.all([
+    supabase
+      .from('replacements')
+      .select('*')
+      .eq('r_date', todayIso())
+      .order('lesson', { ascending: true }),
+    supabase
+      .from('lesson_times')
+      .select('*')
+      .order('lesson', { ascending: true }),
+  ]);
+  const replacements = (replacementsRes.data as Replacement[] | null) ?? [];
+  const lessonTimes = (timesRes.data as LessonTime[] | null) ?? [];
 
   // Текущий пользователь для определения лайкнутых постов.
   const {
@@ -99,77 +107,53 @@ export default async function HomePage({
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Замены сегодня — широкая карточка */}
-        <section className="overflow-hidden rounded-2xl border border-white/10 glass-card bg-transparent shadow-lg transition-transform duration-200 md:hover:-translate-y-1 lg:col-span-2">
-          <div className="flex items-center justify-between bg-gradient-to-r from-cyan-50 to-blue-50 px-6 py-4 dark:from-cyan-950/30 dark:to-blue-950/30">
-            <h2 className="text-lg font-bold text-[var(--text)]">🔄 Замены сегодня</h2>
-            <Link
-              href="/replacements"
-              className="text-sm font-medium text-[var(--accent)] hover:underline"
-            >
-              Все замены →
-            </Link>
-          </div>
-          <div className="space-y-2 p-6">
-            <p className="text-xs text-[var(--text-muted)]">{formatDate(todayIso())}</p>
-            {replacements.length > 0 ? (
-              replacements.map((r) => (
-                <div
-                  key={r.id}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 text-sm transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-[var(--text)]">{r.subject}</span>
-                    <span className="badge bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
-                      {r.lesson} пара
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-[var(--text-muted)]">
-                    {r.group_name} · {r.change_type}
-                  </p>
-                  {(r.teacher || r.cabinet) && (
-                    <p className="text-xs text-[var(--text-muted)]">
-                      {r.teacher}
-                      {r.cabinet ? ` · каб. ${r.cabinet}` : ''}
-                    </p>
-                  )}
-                  {r.note && (
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">{r.note}</p>
-                  )}
-                </div>
-              ))
-            ) : (
-              <p className="rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-muted)]">
-                На сегодня замен нет.
-              </p>
-            )}
-          </div>
-        </section>
+        {/* Виджет звонков и обратного отсчёта — ВВЕРХУ bento-сетки (первой карточкой) */}
+        <BellWidget initialTimes={lessonTimes} />
 
-        {/* Быстрые ссылки: Расписание / Карта / Преподаватели */}
-        {[
-          { href: '/schedule', emoji: '📅', title: 'Расписание', desc: 'Расписание по группам на сегодня и завтра' },
-          { href: '/map', emoji: '🗺️', title: 'Карта', desc: 'Схемы корпусов и кабинеты из расписания' },
-          { href: '/teachers', emoji: '👨‍🏫', title: 'Преподаватели', desc: 'Контакты и предметы преподавателей' },
-        ].map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="block overflow-hidden rounded-2xl border border-white/10 glass-card bg-transparent shadow-lg transition-all duration-200 hover:border-cyan-300 hover:shadow-xl dark:hover:border-cyan-700 md:hover:-translate-y-1 lg:col-span-1"
-          >
-            <div className="bg-gradient-to-r from-cyan-50 to-blue-50 px-6 py-4 dark:from-cyan-950/30 dark:to-blue-950/30">
-              <h2 className="text-lg font-bold text-[var(--text)]">
-                {item.emoji} {item.title}
-              </h2>
-            </div>
-            <p className="p-6 text-sm text-[var(--text-muted)]">{item.desc}</p>
-          </Link>
-        ))}
+        {/* Компактный блок замен на сегодня */}
+        <CompactReplacementsBanner replacements={replacements} />
+
+        {/* Быстрые ссылки: Расписание / Карта */}
+        <Link
+          href="/schedule"
+          className="block overflow-hidden rounded-2xl border border-white/10 glass-card bg-transparent shadow-lg transition-all duration-200 hover:border-cyan-300 hover:shadow-xl dark:hover:border-cyan-700 md:hover:-translate-y-1 lg:col-span-1"
+        >
+          <div className="bg-gradient-to-r from-cyan-50 to-blue-50 px-6 py-4 dark:from-cyan-950/30 dark:to-blue-950/30">
+            <h2 className="text-lg font-bold text-[var(--text)]">📅 Расписание</h2>
+          </div>
+          <p className="p-6 text-sm text-[var(--text-muted)]">
+            Расписание по группам на сегодня и завтра
+          </p>
+        </Link>
+
+        <Link
+          href="/map"
+          className="block overflow-hidden rounded-2xl border border-white/10 glass-card bg-transparent shadow-lg transition-all duration-200 hover:border-cyan-300 hover:shadow-xl dark:hover:border-cyan-700 md:hover:-translate-y-1 lg:col-span-1"
+        >
+          <div className="bg-gradient-to-r from-cyan-50 to-blue-50 px-6 py-4 dark:from-cyan-950/30 dark:to-blue-950/30">
+            <h2 className="text-lg font-bold text-[var(--text)]">🗺️ Карта</h2>
+          </div>
+          <p className="p-6 text-sm text-[var(--text-muted)]">
+            Схемы корпусов и кабинеты из расписания
+          </p>
+        </Link>
+
+        <Link
+          href="/teachers"
+          className="block overflow-hidden rounded-2xl border border-white/10 glass-card bg-transparent shadow-lg transition-all duration-200 hover:border-cyan-300 hover:shadow-xl dark:hover:border-cyan-700 md:hover:-translate-y-1 lg:col-span-1"
+        >
+          <div className="bg-gradient-to-r from-cyan-50 to-blue-50 px-6 py-4 dark:from-cyan-950/30 dark:to-blue-950/30">
+            <h2 className="text-lg font-bold text-[var(--text)]">👨‍🏫 Преподаватели</h2>
+          </div>
+          <p className="p-6 text-sm text-[var(--text-muted)]">
+            Контакты и предметы преподавателей
+          </p>
+        </Link>
 
         {/* Предложить мем / новость */}
-        <section className="overflow-hidden rounded-2xl border border-white/10 glass-card bg-transparent shadow-lg transition-transform duration-200 md:hover:-translate-y-1 lg:col-span-1">
+        <section className="overflow-hidden rounded-2xl border border-white/10 glass-card bg-transparent shadow-lg transition-transform duration-200 md:hover:-translate-y-1 lg:col-span-2">
           <div className="bg-gradient-to-r from-cyan-50 to-blue-50 px-6 py-4 dark:from-cyan-950/30 dark:to-blue-950/30">
-            <h2 className="text-lg font-bold text-[var(--text)]">✍️ Предложить мем</h2>
+            <h2 className="text-lg font-bold text-[var(--text)]">✍️ Предложить мем или новость</h2>
           </div>
           <div className="p-6">
             <SuggestionForm />

@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatDate } from '@/lib/utils';
+import { getMyGroup, subscribeMyGroup } from '@/lib/my-group';
 import type { Replacement } from '@/lib/types';
 
 function todayIso(): string {
@@ -34,6 +35,7 @@ export default function ReplacementTable({
   const [date, setDate] = useState(initialDate);
   const [group, setGroup] = useState('');
   const [teacher, setTeacher] = useState('');
+  const [savedGroup, setSavedGroup] = useState<string | null>(null);
 
   const groups = useMemo(
     () =>
@@ -42,6 +44,21 @@ export default function ReplacementTable({
       ),
     [rows]
   );
+
+  // Предвыбор "Моей группы" при первой загрузке
+  useEffect(() => {
+    const my = getMyGroup();
+    setSavedGroup(my);
+    if (my && groups.includes(my)) {
+      setGroup(my);
+    }
+    return subscribeMyGroup((g) => {
+      setSavedGroup(g);
+      if (g && groups.includes(g)) {
+        setGroup(g);
+      }
+    });
+  }, [groups]);
 
   const filtered = useMemo(() => {
     const t = teacher.trim().toLowerCase();
@@ -90,7 +107,7 @@ export default function ReplacementTable({
             <option value="">Все группы</option>
             {groups.map((g) => (
               <option key={g} value={g}>
-                {g}
+                {g} {savedGroup === g ? '⭐' : ''}
               </option>
             ))}
           </select>
