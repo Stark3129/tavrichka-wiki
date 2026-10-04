@@ -2,8 +2,10 @@
 
 export interface Profile {
   id: string;
-  role: 'student' | 'admin' | 'moderator';
+  role: 'student' | 'admin' | 'moderator' | 'user' | 'banned';
+  username?: string;
   display_name?: string;
+  created_at?: string;
 }
 
 export interface Replacement {

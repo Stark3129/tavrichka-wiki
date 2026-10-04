@@ -95,9 +95,12 @@ export default function Header({
 
           {user ? (
             <>
-              <span className="hidden max-w-[150px] truncate text-sm text-white/90 md:block">
+              <Link
+                href="/profile"
+                className="hidden max-w-[150px] truncate text-sm text-white/90 hover:text-white transition md:block"
+              >
                 {user.email}
-              </span>
+              </Link>
               {userRole === 'admin' && (
                 <span className="hidden rounded bg-purple-500/30 px-1.5 py-0.5 text-xs text-purple-100 md:inline-block">
                   Админ
@@ -169,6 +172,15 @@ export default function Header({
                   </Link>
                 );
               })}
+              {user && (
+                <Link
+                  href="/profile"
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-lg px-3 py-2 text-white/90 hover:bg-white/10 hover:text-white transition"
+                >
+                  Профиль
+                </Link>
+              )}
               {isAdmin && (
                 <Link
                   href="/admin"

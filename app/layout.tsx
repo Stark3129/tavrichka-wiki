@@ -21,6 +21,7 @@ export const metadata: Metadata = {
   },
   description:
     'Студенческий портал колледжа: лента постов, замены, расписание, преподаватели и карта корпусов.',
+  icons: { icon: '/icon.svg' },
 };
 
 export default async function RootLayout({

@@ -208,3 +208,35 @@ export async function updateComment(
   revalidatePath('/');
   return { ok: true, message: 'Сохранено' };
 }
+
+/**
+ * Смена никнейма пользователя: проверка авторизации, длины (3-20 символов),
+ * обновление в profiles и ревалидация страницы /profile.
+ */
+export async function updateUsername(newUsername: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error('Необходима авторизация');
+  }
+
+  const trimmed = (newUsername ?? '').trim();
+  if (trimmed.length < 3 || trimmed.length > 20) {
+    throw new Error('Никнейм должен быть от 3 до 20 символов');
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ username: trimmed })
+    .eq('id', user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath('/profile');
+  return { ok: true };
+}
