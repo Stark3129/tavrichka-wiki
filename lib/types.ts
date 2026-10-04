@@ -103,3 +103,10 @@ export interface LessonTime {
   end_time: string;
 }
 
+export interface PostLike {
+  id: number;
+  post_id: number;
+  user_id: string;
+  created_at: string;
+}
+

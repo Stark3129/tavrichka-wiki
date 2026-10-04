@@ -5,6 +5,7 @@ import { Calendar, Laugh, Lightbulb, Megaphone, Newspaper } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import type { Comment, Post } from '@/lib/types';
 import Comments from '@/components/Comments';
+import LikeButton from '@/components/LikeButton';
 
 const TYPE_META: Record<
   Post['type'],
@@ -20,9 +21,13 @@ const TYPE_META: Record<
 export default function PostCard({
   post,
   comments = [],
+  initialCount = 0,
+  initialLiked = false,
 }: {
   post: Post;
   comments?: Comment[];
+  initialCount?: number;
+  initialLiked?: boolean;
 }) {
   const meta = TYPE_META[post.type] ?? {
     label: post.type,
@@ -62,6 +67,14 @@ export default function PostCard({
           className="max-h-96 w-full border-t border-[var(--border)] object-cover"
         />
       )}
+
+      <div className="flex items-center gap-4 border-t border-[var(--border)] px-4 py-2.5 sm:px-5">
+        <LikeButton
+          postId={post.id}
+          initialCount={initialCount}
+          initialLiked={initialLiked}
+        />
+      </div>
 
       <div className="border-t border-[var(--border)] px-4 pb-4 sm:px-5">
         <Comments postId={String(post.id)} initialComments={comments} />

@@ -49,18 +49,50 @@ export default async function HomePage({
     .order('lesson', { ascending: true });
   const replacements = (replacementsData as Replacement[] | null) ?? [];
 
-  // Комментарии ко всем постам ленты (одним запросом, группируем по post_id).
+  // Текущий пользователь для определения лайкнутых постов.
+  const {
+    data: { user: currentUser },
+  } = await supabase.auth.getUser();
+
+  // Комментарии и лайки ко всем постам ленты (одним запросом на таблицу).
   const commentsByPost = new Map<number, Comment[]>();
+  const likesCountByPost = new Map<number, number>();
+  const userLikedPostIds = new Set<number>();
+
   if (posts.length > 0) {
-    const { data: commentsData } = await supabase
-      .from('comments')
-      .select('*, profiles(username)')
-      .in('post_id', posts.map((p) => p.id))
-      .order('created_at', { ascending: true });
-    for (const c of (commentsData as Comment[] | null) ?? []) {
+    const postIds = posts.map((p) => p.id);
+
+    const [commentsRes, likesRes, userLikesRes] = await Promise.all([
+      supabase
+        .from('comments')
+        .select('*, profiles(username)')
+        .in('post_id', postIds)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('post_likes')
+        .select('post_id')
+        .in('post_id', postIds),
+      currentUser
+        ? supabase
+            .from('post_likes')
+            .select('post_id')
+            .eq('user_id', currentUser.id)
+            .in('post_id', postIds)
+        : Promise.resolve({ data: null }),
+    ]);
+
+    for (const c of (commentsRes.data as Comment[] | null) ?? []) {
       const list = commentsByPost.get(c.post_id) ?? [];
       list.push(c);
       commentsByPost.set(c.post_id, list);
+    }
+
+    for (const l of (likesRes.data as { post_id: number }[] | null) ?? []) {
+      likesCountByPost.set(l.post_id, (likesCountByPost.get(l.post_id) ?? 0) + 1);
+    }
+
+    for (const ul of (userLikesRes.data as { post_id: number }[] | null) ?? []) {
+      userLikedPostIds.add(ul.post_id);
     }
   }
 
@@ -185,6 +217,8 @@ export default async function HomePage({
                   key={post.id}
                   post={post}
                   comments={commentsByPost.get(post.id) ?? []}
+                  initialCount={likesCountByPost.get(post.id) ?? 0}
+                  initialLiked={userLikedPostIds.has(post.id)}
                 />
               ))}
             </div>
