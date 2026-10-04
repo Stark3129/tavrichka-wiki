@@ -100,6 +100,8 @@ export default function MapExplorer({
   times,
   today,
   initialCabinet = null,
+  initialHighlight = null,
+  initialFloor = null,
   initialDate = null,
 }: {
   corpus: number;
@@ -110,29 +112,60 @@ export default function MapExplorer({
   today: string;
   /** Кабинет из URL ?cabinet= — открываем его панель при монтировании. */
   initialCabinet?: string | null;
+  /** Кабинет для подсветки из URL ?highlight= */
+  initialHighlight?: string | null;
+  /** Этаж из URL ?floor= */
+  initialFloor?: number | null;
   /** Дата из URL ?date= (ГГГГ-ММ-ДД). */
   initialDate?: string | null;
 }) {
+  const highlightTarget = initialHighlight || initialCabinet || null;
+
   const sortedFloors = useMemo(
     () => [...floors].sort((a, b) => a.sort - b.sort),
     [floors]
   );
-  const [activeFloorId, setActiveFloorId] = useState<number | null>(
-    sortedFloors[0]?.id ?? null
-  );
-  const [selectedId, setSelectedId] = useState<number | null>(() => {
-    if (!initialCabinet) return null;
-    // Прямая ссылка: подбираем объект карты по кабинету/названию.
-    const found = objects.find(
-      (o) =>
-        o.room === initialCabinet ||
-        CABINET_OVERRIDE[o.name] === initialCabinet ||
-        o.name === initialCabinet
+
+  // Находим объект на карте для подсветки/выбора
+  const highlightObject = useMemo(() => {
+    if (!highlightTarget) return null;
+    return (
+      objects.find(
+        (o) =>
+          o.room === highlightTarget ||
+          o.name === highlightTarget ||
+          CABINET_OVERRIDE[o.name] === highlightTarget ||
+          normalizeCabinet(o.room, corpus).toLowerCase() ===
+            normalizeCabinet(highlightTarget, corpus).toLowerCase() ||
+          normalizeCabinet(o.name, corpus).toLowerCase() ===
+            normalizeCabinet(highlightTarget, corpus).toLowerCase()
+      ) ?? null
     );
-    return found?.id ?? null;
+  }, [highlightTarget, objects, corpus]);
+
+  const [activeFloorId, setActiveFloorId] = useState<number | null>(() => {
+    if (highlightObject) {
+      const match = sortedFloors.find((f) => f.floor === highlightObject.floor);
+      if (match) return match.id;
+    }
+    if (initialFloor) {
+      const match = sortedFloors.find((f) => f.floor === initialFloor);
+      if (match) return match.id;
+    }
+    return sortedFloors[0]?.id ?? null;
   });
+
+  const [selectedId, setSelectedId] = useState<number | null>(() => {
+    return highlightObject?.id ?? null;
+  });
+
   // Кабинет, выбранный кликом (в т.ч. жд*, с/з, а/з из дополнительной сетки).
-  const [selectedCabinet, setSelectedCabinet] = useState<string | null>(initialCabinet);
+  const [selectedCabinet, setSelectedCabinet] = useState<string | null>(highlightTarget);
+  const [highlightPulsing, setHighlightPulsing] = useState<boolean>(Boolean(highlightTarget));
+  const [highlightBanner, setHighlightBanner] = useState<string | null>(() =>
+    highlightTarget ? `Кабинет ${highlightTarget} подсвечен` : null
+  );
+
   // Кабинеты из расписания, которых нет на схеме (показываются в Корпусе 2).
   const [extraCabinets, setExtraCabinets] = useState<string[]>([]);
   const [extraLoading, setExtraLoading] = useState(false);
@@ -207,6 +240,46 @@ export default function MapExplorer({
 
     load();
   }, [corpus, objects]);
+
+  // Обработка подсветки кабинета (анимация рамки/пульса, автоскролл и скрытие баннера)
+  useEffect(() => {
+    if (!highlightTarget) return;
+
+    // 3 секунды интенсивной пульсации и рамки
+    const pulseTimer = setTimeout(() => {
+      setHighlightPulsing(false);
+    }, 3000);
+
+    // 5 секунд отображения баннера
+    const bannerTimer = setTimeout(() => {
+      setHighlightBanner(null);
+    }, 5000);
+
+    // Плавный скролл к найденному элементу кабинета
+    const scrollTimer = setTimeout(() => {
+      const targetCabinetNorm = normalizeCabinet(highlightTarget, corpus).toLowerCase();
+      const elements = Array.from(document.querySelectorAll<HTMLElement>('[data-cabinet]'));
+      const foundEl = elements.find((el) => {
+        const val = (el.getAttribute('data-cabinet') || '').toLowerCase();
+        return (
+          val === highlightTarget.toLowerCase() ||
+          val === targetCabinetNorm ||
+          normalizeCabinet(val, corpus).toLowerCase() === targetCabinetNorm ||
+          el.innerText.trim().toLowerCase() === highlightTarget.toLowerCase()
+        );
+      });
+
+      if (foundEl) {
+        foundEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 400);
+
+    return () => {
+      clearTimeout(pulseTimer);
+      clearTimeout(bannerTimer);
+      clearTimeout(scrollTimer);
+    };
+  }, [highlightTarget, corpus, activeFloorId]);
 
   // Фактический кабинет в расписании: выбранный кликом или объект карты.
   // Кабинеты Корпуса 2 нормализуются («14» → «жд14»), т.к. в расписании
@@ -529,25 +602,45 @@ export default function MapExplorer({
                 </p>
               ) : (
                 <div className="card flex flex-wrap gap-2 p-4">
-                  {floorObjects.map((o) => (
-                    <button
-                      key={o.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedId(o.id);
-                        setSelectedCabinet(null);
-                      }}
-                      className={cn(
-                        'rounded-xl border px-3 py-1.5 text-sm font-medium transition-all duration-200',
-                        o.id === selectedId
-                          ? 'border-blue-600 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
-                          : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-cyan-300 hover:bg-cyan-50 dark:hover:bg-cyan-950/30',
-                        o.id === selectedId && 'ring-2 ring-cyan-500'
-                      )}
-                    >
-                      {o.name}
-                    </button>
-                  ))}
+                  {floorObjects.map((o) => {
+                    const cabinetVal = o.room || o.name;
+                    const isHighlighted = Boolean(
+                      highlightTarget &&
+                        (o.id === highlightObject?.id ||
+                          o.room?.toLowerCase() === highlightTarget.toLowerCase() ||
+                          o.name.toLowerCase() === highlightTarget.toLowerCase() ||
+                          (CABINET_OVERRIDE[o.name] &&
+                            CABINET_OVERRIDE[o.name]?.toLowerCase() === highlightTarget.toLowerCase()) ||
+                          normalizeCabinet(o.room, corpus).toLowerCase() ===
+                            normalizeCabinet(highlightTarget, corpus).toLowerCase() ||
+                          normalizeCabinet(o.name, corpus).toLowerCase() ===
+                            normalizeCabinet(highlightTarget, corpus).toLowerCase())
+                    );
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        data-cabinet={cabinetVal}
+                        onClick={() => {
+                          setSelectedId(o.id);
+                          setSelectedCabinet(null);
+                        }}
+                        className={cn(
+                          'rounded-xl border px-3 py-1.5 text-sm font-medium transition-all duration-200',
+                          o.id === selectedId
+                            ? 'border-blue-600 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
+                            : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-cyan-300 hover:bg-cyan-50 dark:hover:bg-cyan-950/30',
+                          o.id === selectedId && 'ring-2 ring-cyan-500',
+                          isHighlighted && 'bg-cyan-500/20 border-2 border-cyan-400',
+                          isHighlighted &&
+                            highlightPulsing &&
+                            'animate-pulse border-4 border-cyan-400 rounded-lg ring-4 ring-cyan-400/50'
+                        )}
+                      >
+                        {o.name}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             {/* Кабинеты из расписания, не отмеченные на схеме (жд*, с/з, а/з) */}
@@ -572,25 +665,38 @@ export default function MapExplorer({
                 )}
                 {!extraLoading && extraCabinets.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {extraCabinets.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCabinet(c);
-                          setSelectedId(null);
-                        }}
-                        className={cn(
-                          'rounded-xl border px-3 py-1.5 text-sm font-medium transition-all duration-200',
-                          c === selectedCabinet
-                            ? 'border-blue-600 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
-                            : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-cyan-300 hover:bg-cyan-50 dark:hover:bg-cyan-950/30',
-                          c === selectedCabinet && 'ring-2 ring-cyan-500'
-                        )}
-                      >
-                        {c}
-                      </button>
-                    ))}
+                    {extraCabinets.map((c) => {
+                      const isHighlighted = Boolean(
+                        highlightTarget &&
+                          (c.toLowerCase() === highlightTarget.toLowerCase() ||
+                            normalizeCabinet(c, corpus).toLowerCase() ===
+                              normalizeCabinet(highlightTarget, corpus).toLowerCase())
+                      );
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          data-cabinet={c}
+                          onClick={() => {
+                            setSelectedCabinet(c);
+                            setSelectedId(null);
+                          }}
+                          className={cn(
+                            'rounded-xl border px-3 py-1.5 text-sm font-medium transition-all duration-200',
+                            c === selectedCabinet
+                              ? 'border-blue-600 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
+                              : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-cyan-300 hover:bg-cyan-50 dark:hover:bg-cyan-950/30',
+                            c === selectedCabinet && 'ring-2 ring-cyan-500',
+                            isHighlighted && 'bg-cyan-500/20 border-2 border-cyan-400',
+                            isHighlighted &&
+                              highlightPulsing &&
+                              'animate-pulse border-4 border-cyan-400 rounded-lg ring-4 ring-cyan-400/50'
+                          )}
+                        >
+                          {c}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -601,6 +707,22 @@ export default function MapExplorer({
             {panel}
           </div>
         </>
+      )}
+
+      {/* Тост подсветки кабинета */}
+      {highlightBanner && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border border-cyan-400 bg-slate-900/95 px-4 py-3 text-sm font-medium text-cyan-300 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-4">
+          <span className="flex h-2.5 w-2.5 rounded-full bg-cyan-400 animate-ping" />
+          <span>{highlightBanner}</span>
+          <button
+            type="button"
+            onClick={() => setHighlightBanner(null)}
+            className="ml-2 rounded p-1 text-slate-400 transition-colors hover:text-white"
+            aria-label="Закрыть"
+          >
+            ✕
+          </button>
+        </div>
       )}
     </div>
   );

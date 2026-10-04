@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import MapExplorer from '@/components/MapExplorer';
+import { getCorpusFromCabinet } from '@/lib/cabinet-utils';
 import type { LessonTime, MapFloor, MapObject } from '@/lib/types';
 
 export const metadata = { title: 'Карта' };
@@ -16,10 +17,27 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export default async function MapPage({
   searchParams,
 }: {
-  searchParams: Promise<{ corpus?: string; cabinet?: string; date?: string }>;
+  searchParams: Promise<{
+    corpus?: string;
+    cabinet?: string;
+    date?: string;
+    highlight?: string;
+    floor?: string;
+  }>;
 }) {
-  const { corpus = '', cabinet = '', date = '' } = await searchParams;
-  const corpusNum = Number(corpus) || 1;
+  const {
+    corpus = '',
+    cabinet = '',
+    date = '',
+    highlight = '',
+    floor = '',
+  } = await searchParams;
+
+  const targetHighlight = highlight || cabinet || '';
+  const parsedCorpus = Number(corpus);
+  const inferredCorpus = targetHighlight ? getCorpusFromCabinet(targetHighlight) : null;
+  const corpusNum = parsedCorpus || inferredCorpus || 1;
+  const floorNum = floor ? Number(floor) : null;
 
   const supabase = await createClient();
 
@@ -53,7 +71,9 @@ export default async function MapPage({
       objects={objects}
       times={times}
       today={todayIso()}
-      initialCabinet={cabinet || null}
+      initialCabinet={targetHighlight || null}
+      initialHighlight={targetHighlight || null}
+      initialFloor={floorNum}
       initialDate={DATE_RE.test(date) ? date : null}
     />
   );

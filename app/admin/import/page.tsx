@@ -16,6 +16,10 @@ import {
   parseReplacementsWorkbook,
   parseMetaFromFileName,
 } from '@/lib/replacements-parser';
+import {
+  parseReplacementFileName,
+  type FileMetadata,
+} from '@/lib/parse-filename-metadata';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { weekdayRu } from '@/lib/cabinets';
 
@@ -32,6 +36,7 @@ export default function AdminImportPage() {
 
 function AdminImportPageInner() {
   const [file, setFile] = useState<File | null>(null);
+  const [detectedMeta, setDetectedMeta] = useState<FileMetadata | null>(null);
   const [date, setDate] = useState('');
   const [weekType, setWeekType] = useState<'числитель' | 'знаменатель'>('числитель');
   const [mode, setMode] = useState<Mode>('append');
@@ -293,6 +298,7 @@ function AdminImportPageInner() {
       setNewTeachers([]);
       setRepStats(null);
       setFile(null);
+      setDetectedMeta(null);
       setFileName('');
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : 'Неизвестная ошибка публикации.');
@@ -331,6 +337,31 @@ function AdminImportPageInner() {
           Загрузите матрицу расписания в .xlsx. Сначала разберите файл и проверьте
           предпросмотр, затем публикуйте.
         </p>
+
+        {detectedMeta && (
+          <div className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-[var(--text)]">
+            <div className="flex items-start gap-2.5">
+              <span className="text-lg leading-none">✨</span>
+              <div>
+                <p className="font-medium text-[var(--text)]">
+                  Распознано из имени файла: {detectedMeta.loadType === 'replacements' ? 'Замены' : 'Семестр'}
+                  , дата: {detectedMeta.date || '—'}
+                  , неделя: {detectedMeta.weekType || '—'}
+                  , день: {detectedMeta.dayOfWeek || '—'}.
+                  <span className="ml-1 text-[var(--text-muted)]">Вы можете изменить параметры вручную.</span>
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDetectedMeta(null)}
+              className="rounded p-1 text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
+              aria-label="Закрыть уведомление"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         <fieldset className="mt-4">
           <legend className="label">Тип загрузки</legend>
@@ -380,10 +411,19 @@ function AdminImportPageInner() {
               onChange={(e) => {
                 const f = e.target.files?.[0] ?? null;
                 setFile(f);
-                if (f && importKind === 'date') {
-                  const meta = parseMetaFromFileName(f.name);
-                  if (meta.date && !date) setDate(meta.date);
+                if (f) {
+                  const meta = parseReplacementFileName(f.name);
+                  setDetectedMeta(meta);
+                  if (meta.loadType === 'semester') {
+                    setImportKind('semester');
+                  } else {
+                    setImportKind('date');
+                  }
+                  if (meta.date) setDate(meta.date);
                   if (meta.weekType) setWeekType(meta.weekType);
+                  setMode(meta.publishMode);
+                } else {
+                  setDetectedMeta(null);
                 }
               }}
               className="input file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700"

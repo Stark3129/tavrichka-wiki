@@ -4,6 +4,7 @@ import { capitalize, formatDate } from '@/lib/utils';
 import { mergeScheduleRows } from '@/lib/schedule-merge';
 import ShareSchedule from '@/components/ShareSchedule';
 import ScheduleGroupSelect from '@/components/ScheduleGroupSelect';
+import { getCorpusFromCabinet, getFloorFromCabinet } from '@/lib/cabinet-utils';
 import type { LessonTime, ScheduleRow } from '@/lib/types';
 
 export const metadata = { title: 'Расписание' };
@@ -256,7 +257,39 @@ export default async function SchedulePage({
                     <td className="px-3 py-2.5">{r.teacher || '—'}</td>
                     <td className="px-3 py-2.5">
                       {r.cabinet ? (
-                        r.cabinet
+                        <div className="flex flex-col gap-0.5">
+                          {r.cabinet
+                            .split('\n')
+                            .map((c) => c.trim())
+                            .filter(Boolean)
+                            .map((cab, idx) => {
+                              const isUnmapped =
+                                cab.toLowerCase() === 'с/з' || cab.toLowerCase() === 'а/з';
+                              if (isUnmapped) {
+                                return (
+                                  <span
+                                    key={idx}
+                                    className="opacity-50 cursor-not-allowed text-[var(--text-muted)] inline-block"
+                                    title="Схема зала отсутствует"
+                                  >
+                                    {cab}
+                                  </span>
+                                );
+                              }
+                              const corpus = getCorpusFromCabinet(cab) ?? 1;
+                              const floor = getFloorFromCabinet(cab) ?? 1;
+                              return (
+                                <Link
+                                  key={idx}
+                                  href={`/map?corpus=${corpus}&highlight=${encodeURIComponent(cab)}&floor=${floor}`}
+                                  className="text-blue-500 hover:text-blue-400 hover:underline cursor-pointer transition-colors inline-block"
+                                  title="Показать на карте"
+                                >
+                                  {cab}
+                                </Link>
+                              );
+                            })}
+                        </div>
                       ) : (
                         <span className="text-[var(--text-muted)] italic">Кабинет не указан</span>
                       )}
